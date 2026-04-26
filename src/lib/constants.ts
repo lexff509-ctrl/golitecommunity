@@ -17,7 +17,7 @@ export const RECEPTION_PLATFORMS = [
 export const EXCHANGE_RATE = 150; // 1 USD = 150 HTG for MonCash/NatCash
 
 export const BINANCE_INFO = {
-  id: "2K27hA",
+  id: "554871538",
   name: "DK27HA",
 };
 

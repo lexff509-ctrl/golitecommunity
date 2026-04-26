@@ -32,9 +32,17 @@ export default function AdminLayout({
     }
   }, []);
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        headers: { "x-session-token": localStorage.getItem("golite_token") || "" },
+      });
+    } catch {
+      // ignore
+    }
     clearAuth();
-    window.location.href = "/login";
+    window.location.replace("/login");
   };
 
   if (!user) {

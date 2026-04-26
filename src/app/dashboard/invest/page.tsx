@@ -121,7 +121,7 @@ export default function InvestGuidePage() {
               name: "Binance",
               status: "Disponible",
               ok: true,
-              info: "ID: 2K27hA | Nom: DK27HA",
+              info: "ID: 554871538 | Nom: DK27HA",
             },
             { name: "Crypto", status: "Disponible", ok: true, info: "TRC20 / ERC20" },
             { name: "Zelle", status: "Disponible", ok: true, info: "Email ou numéro" },
