@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const validMethods = ["MonCash", "NatCash", "Binance", "Crypto", "Zelle"];
+    const validMethods = ["MonCash", "NatCash", "CamTransfer", "Binance", "Crypto"];
     if (!validMethods.includes(method)) {
       return NextResponse.json(
         { error: "Méthode de paiement invalide" },
@@ -125,7 +125,7 @@ export async function POST(req: NextRequest) {
     // Conversion: MonCash / NatCash -> 1 USD = 150 HTG
     let amountHTG: number | null = null;
     let currency = "USD";
-    if (method === "MonCash" || method === "NatCash") {
+    if (method === "MonCash" || method === "NatCash" || method === "CamTransfer") {
       amountHTG = amount * 150;
       currency = "HTG";
     }

@@ -1,9 +1,10 @@
 export const PAYMENT_METHODS = [
   { id: "MonCash", label: "MonCash", available: true },
   { id: "NatCash", label: "NatCash", available: false },
+  { id: "CamTransfer", label: "CAM Transfer", available: true },
   { id: "Binance", label: "Binance", available: true },
   { id: "Crypto", label: "Crypto", available: true },
-  { id: "Zelle", label: "Zelle", available: true },
+  { id: "Zelle", label: "Zelle", available: false },
 ] as const;
 
 export const RECEPTION_PLATFORMS = [
@@ -25,6 +26,15 @@ export const MONCASH_INFO = {
   name: "Joseph Renato",
   phone: "+50931959375",
 };
+
+export const CAM_TRANSFER_INFO = {
+  name: "Dorvil Winchell",
+  referenceNumber: "+50946074865",
+  instructions:
+    "Payez depuis un distributeur CAM et conservez la preuve de paiement.",
+};
+
+export const DEFAULT_TRC20_WALLET = "TPYgjvcLB5Jps5zEmMPgRK8xHXip5iVuyJ";
 
 export const STATUS_MAP: Record<
   string,

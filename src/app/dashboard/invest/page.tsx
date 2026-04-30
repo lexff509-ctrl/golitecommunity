@@ -1,8 +1,29 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import Link from "next/link";
+import { EXCHANGE_RATE } from "@/lib/constants";
+
+const INVESTMENT_RETURNS: Record<number, number> = {
+  15: 30,
+  30: 100,
+  50: 170,
+  100: 350,
+  200: 720,
+  300: 1100,
+  400: 1500,
+  500: 1900,
+};
 
 export default function InvestGuidePage() {
+  const [amount, setAmount] = useState("15");
+  const [cryptoHtg, setCryptoHtg] = useState("1500");
+  const amountNum = Number(amount) || 0;
+  const cryptoHtgNum = Number(cryptoHtg) || 0;
+
+  const exactReturn = useMemo(() => INVESTMENT_RETURNS[amountNum], [amountNum]);
+  const cryptoUsd = useMemo(() => cryptoHtgNum / EXCHANGE_RATE, [cryptoHtgNum]);
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-fade-in">
       <div>
@@ -33,7 +54,7 @@ export default function InvestGuidePage() {
             step: 3,
             icon: "3️⃣",
             title: "Sélectionnez la méthode de paiement",
-            desc: "Choisissez parmi les méthodes disponibles : MonCash, Binance, Crypto, Zelle. NatCash est temporairement indisponible.",
+            desc: "Choisissez parmi les méthodes disponibles : MonCash, CAM Transfer, Binance, Crypto. NatCash et Zelle sont temporairement indisponibles.",
           },
           {
             step: 4,
@@ -124,9 +145,10 @@ export default function InvestGuidePage() {
               info: "ID: 554871538 | Nom: DK27HA",
             },
             { name: "Crypto", status: "Disponible", ok: true, info: "TRC20 / ERC20" },
-            { name: "Zelle", status: "Disponible", ok: true, info: "Email ou numéro" },
+            { name: "CAM Transfer", status: "Disponible", ok: true, info: "Dorvil Winchell | Réf: +50946074865" },
             { name: "MonCash", status: "Disponible", ok: true, info: "Numéro: 31959375" },
             { name: "NatCash", status: "Temporairement indisponible", ok: false },
+            { name: "Zelle", status: "Temporairement indisponible", ok: false },
           ].map((m) => (
             <div
               key={m.name}
@@ -153,6 +175,69 @@ export default function InvestGuidePage() {
             </div>
           ))}
         </div>
+      </div>
+
+      {/* Investment Calculator */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-slate-900 mb-3">
+          🧮 Calcul investissement (15$ à 500$)
+        </h2>
+        <p className="text-sm text-slate-500 mb-4">
+          Entrez un montant autorisé pour voir le gain attendu immédiatement.
+        </p>
+        <input
+          type="number"
+          min="15"
+          max="500"
+          step="1"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm mb-4"
+        />
+        {exactReturn ? (
+          <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-sm">
+            <p className="font-semibold text-slate-900">
+              Investi: ${amountNum.toLocaleString()} → Gain: ${exactReturn.toLocaleString()}
+            </p>
+          </div>
+        ) : (
+          <div className="p-4 rounded-xl bg-amber-50 border border-amber-200 text-sm text-amber-700">
+            Montant non autorisé. Montants disponibles: {Object.keys(INVESTMENT_RETURNS).join(", ")} USD.
+          </div>
+        )}
+      </div>
+
+      {/* Crypto Purchase */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-6">
+        <h2 className="text-lg font-bold text-slate-900 mb-3">
+          💱 Achat de crypto
+        </h2>
+        <p className="text-sm text-slate-500 mb-4">
+          Taux fixe: 1 USD = {EXCHANGE_RATE} HTG. L&apos;admin valide uniquement avec preuve de paiement (image).
+        </p>
+        <div className="grid sm:grid-cols-2 gap-3 mb-4">
+          <input
+            type="number"
+            min="150"
+            step="1"
+            value={cryptoHtg}
+            onChange={(e) => setCryptoHtg(e.target.value)}
+            className="w-full px-4 py-2.5 rounded-xl border border-slate-200 text-sm"
+            placeholder="Montant HTG"
+          />
+          <div className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-sm">
+            Equivalent USD: <span className="font-semibold">{cryptoUsd.toFixed(2)} USD</span>
+          </div>
+        </div>
+        <p className="text-xs text-slate-500 mb-3">
+          Processus: paiement → upload preuve image → validation admin → traitement.
+        </p>
+        <Link
+          href="/dashboard/payment"
+          className="inline-block px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-blue-600 rounded-xl hover:opacity-90"
+        >
+          Acheter crypto maintenant
+        </Link>
       </div>
 
       {/* Rules & Warnings */}

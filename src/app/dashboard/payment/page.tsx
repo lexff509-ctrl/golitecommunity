@@ -11,6 +11,8 @@ import {
   EXCHANGE_RATE,
   BINANCE_INFO,
   MONCASH_INFO,
+  CAM_TRANSFER_INFO,
+  DEFAULT_TRC20_WALLET,
 } from "@/lib/constants";
 
 type FormData = {
@@ -69,7 +71,7 @@ export default function NewPaymentPage() {
 
   const amountNum = parseFloat(form.amountUSD) || 0;
   const needsConversion =
-    form.method === "MonCash" || form.method === "NatCash";
+    form.method === "MonCash" || form.method === "NatCash" || form.method === "CamTransfer";
   const convertedAmount = needsConversion ? amountNum * EXCHANGE_RATE : 0;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -492,6 +494,25 @@ export default function NewPaymentPage() {
                     </p>
                   </div>
                 )}
+                {form.method === "CamTransfer" && (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between p-2 bg-white rounded-lg">
+                      <span className="text-slate-500">Nom & prénom :</span>
+                      <span className="font-mono font-bold text-slate-900">
+                        {CAM_TRANSFER_INFO.name}
+                      </span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-white rounded-lg">
+                      <span className="text-slate-500">Numéro de référence :</span>
+                      <span className="font-mono font-bold text-slate-900">
+                        {CAM_TRANSFER_INFO.referenceNumber}
+                      </span>
+                    </div>
+                    <p className="text-amber-600 text-xs font-medium">
+                      ⚠️ {CAM_TRANSFER_INFO.instructions}
+                    </p>
+                  </div>
+                )}
                 {form.method === "Binance" && (
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between p-2 bg-white rounded-lg">
@@ -510,8 +531,8 @@ export default function NewPaymentPage() {
                 )}
                 {form.method === "Crypto" && (
                   <div className="text-sm text-slate-600 space-y-1">
-                    <p>• Réseau requis : TRC20, ERC20 ou autre</p>
-                    <p>• L&apos;adresse wallet vous sera communiquée</p>
+                    <p>• Réseau requis : TRC-20 (TRON)</p>
+                    <p>• Wallet: {pubConfig?.config?.wallet_trc20 || DEFAULT_TRC20_WALLET}</p>
                     <p className="text-amber-600 font-medium">
                       ⚠️ Assurez-vous d&apos;envoyer via le bon réseau
                     </p>
@@ -527,9 +548,7 @@ export default function NewPaymentPage() {
             )}
 
             {/* Wallet TRC20 */}
-            {pubConfig?.config?.wallet_trc20 && (
-              <WalletDisplay wallet={pubConfig.config.wallet_trc20} />
-            )}
+            <WalletDisplay wallet={pubConfig?.config?.wallet_trc20 || DEFAULT_TRC20_WALLET} />
 
             {/* Conversion display */}
             {amountNum > 0 && (
