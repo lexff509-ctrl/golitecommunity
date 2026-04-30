@@ -6,6 +6,11 @@ import { eq, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
+function toSafeNumber(value: unknown): number {
+  const num = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(num) ? num : 0;
+}
+
 // GET - single project detail with stats
 export async function GET(
   _req: NextRequest,
@@ -55,7 +60,29 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ project: result[0] });
+    const project = result[0];
+    const goal = toSafeNumber(project.goalAmount);
+    const current = toSafeNumber(project.currentAmount);
+    const collected = toSafeNumber(project.collectedAmount);
+    const createdAt =
+      project.createdAt instanceof Date
+        ? project.createdAt.toISOString()
+        : String(project.createdAt);
+
+    return NextResponse.json({
+      project: {
+        ...project,
+        goalAmount: goal.toString(),
+        currentAmount: current.toString(),
+        collectedAmount: collected.toString(),
+        targetAmount: goal.toString(),
+        startDate: createdAt,
+        endDate: createdAt,
+        countdownId: null,
+        createdAt,
+        paymentCount: toSafeNumber(project.paymentCount),
+      },
+    });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "";
     if (msg === "Unauthorized" || msg === "Forbidden") {
@@ -74,14 +101,17 @@ export async function PUT(
     await requireAdmin(req);
     const { id } = await params;
     const body = await req.json();
-    const { name, description, goalAmount, status, active, imageUrl } = body;
+    const { name, description, goalAmount, targetAmount, status, active, imageUrl } = body;
+    const resolvedGoalAmount = goalAmount ?? targetAmount;
 
     await db
       .update(projects)
       .set({
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
-        ...(goalAmount !== undefined && { goal_amount: String(goalAmount) }),
+        ...(resolvedGoalAmount !== undefined && {
+          goal_amount: toSafeNumber(resolvedGoalAmount).toString(),
+        }),
         ...(status !== undefined && { status }),
         ...(active !== undefined && { active }),
         ...(imageUrl !== undefined && { image_url: imageUrl || null }),

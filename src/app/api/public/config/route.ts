@@ -32,11 +32,42 @@ export async function GET() {
       configMap[c.key] = c.value || "";
     });
 
+    const normalizedCountdown = countdown[0]
+      ? {
+          id: countdown[0].id,
+          title: countdown[0].title,
+          targetDate: countdown[0].target_date
+            ? new Date(countdown[0].target_date).toISOString()
+            : "",
+          active: countdown[0].active,
+          message: countdown[0].message,
+        }
+      : null;
+
+    const normalizedFaq = faqList.map((f) => ({
+      id: f.id,
+      question: f.question,
+      answer: f.answer,
+      category: f.category,
+      order: f.order,
+    }));
+
+    const normalizedOnboarding = steps.map((s) => ({
+      id: s.id,
+      stepNumber: s.step_number,
+      title: s.title,
+      description: s.description,
+      videoUrl: s.video_url,
+      linkUrl: s.link_url,
+      linkLabel: s.link_label,
+      icon: s.icon,
+    }));
+
     return NextResponse.json({
-      countdown: countdown[0] || null,
+      countdown: normalizedCountdown,
       config: configMap,
-      faq: faqList,
-      onboarding: steps,
+      faq: normalizedFaq,
+      onboarding: normalizedOnboarding,
     });
   } catch (error) {
     console.error("Public config error:", error);

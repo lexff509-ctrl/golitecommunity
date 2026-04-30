@@ -104,7 +104,9 @@ export default function AdminConfigPage() {
   };
 
   useEffect(() => {
-    loadAll();
+    queueMicrotask(() => {
+      void loadAll();
+    });
   }, []);
 
   const showMsg = (msg: string) => {

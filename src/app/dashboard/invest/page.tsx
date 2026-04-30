@@ -33,7 +33,7 @@ export default function InvestGuidePage() {
             step: 3,
             icon: "3️⃣",
             title: "Sélectionnez la méthode de paiement",
-            desc: "Choisissez parmi les méthodes disponibles : Binance, Crypto, Zelle. MonCash et NatCash sont temporairement indisponibles.",
+            desc: "Choisissez parmi les méthodes disponibles : MonCash, Binance, Crypto, Zelle. NatCash est temporairement indisponible.",
           },
           {
             step: 4,
@@ -125,7 +125,7 @@ export default function InvestGuidePage() {
             },
             { name: "Crypto", status: "Disponible", ok: true, info: "TRC20 / ERC20" },
             { name: "Zelle", status: "Disponible", ok: true, info: "Email ou numéro" },
-            { name: "MonCash", status: "Temporairement indisponible", ok: false },
+            { name: "MonCash", status: "Disponible", ok: true, info: "Numéro: 31959375" },
             { name: "NatCash", status: "Temporairement indisponible", ok: false },
           ].map((m) => (
             <div

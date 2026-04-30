@@ -38,7 +38,9 @@ export default function NotificationsPage() {
   };
 
   useEffect(() => {
-    fetchNotifications();
+    queueMicrotask(() => {
+      void fetchNotifications();
+    });
   }, []);
 
   const handleMarkAllRead = async () => {
@@ -59,7 +61,7 @@ export default function NotificationsPage() {
       });
     }
     if (notif.link) {
-      window.location.href = notif.link;
+      window.location.assign(notif.link);
     }
     fetchNotifications();
   };

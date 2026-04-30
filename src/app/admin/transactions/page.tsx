@@ -87,19 +87,23 @@ function TransactionsContent() {
   }, [statusFilter, methodFilter, searchTerm]);
 
   useEffect(() => {
-    fetchPayments();
+    queueMicrotask(() => {
+      void fetchPayments();
+    });
   }, [fetchPayments]);
 
   useEffect(() => {
     if (selectedId) {
-      setDetailLoading(true);
-      apiFetch(`/api/admin/payments/${selectedId}`)
-        .then((r) => r.json())
-        .then((data) => {
-          setDetailPayment(data.payment || null);
-          setDetailLoading(false);
-        })
-        .catch(() => setDetailLoading(false));
+      queueMicrotask(() => {
+        setDetailLoading(true);
+        apiFetch(`/api/admin/payments/${selectedId}`)
+          .then((r) => r.json())
+          .then((data) => {
+            setDetailPayment(data.payment || null);
+            setDetailLoading(false);
+          })
+          .catch(() => setDetailLoading(false));
+      });
     }
   }, [selectedId]);
 

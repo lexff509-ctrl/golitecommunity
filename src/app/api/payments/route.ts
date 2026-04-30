@@ -6,6 +6,12 @@ import { eq, desc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
+function toIso(value: unknown): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 function generateTransactionId(): string {
   const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
   let id = "GL-";
@@ -26,7 +32,34 @@ export async function GET(req: NextRequest) {
       .where(eq(payments.user_id, user.id))
       .orderBy(desc(payments.created_at));
 
-    return NextResponse.json({ payments: result });
+    const normalizedPayments = result.map((payment) => ({
+      id: payment.id,
+      transactionId: payment.transaction_id,
+      referenceCode: payment.reference_code,
+      userId: payment.user_id,
+      projectId: payment.project_id,
+      firstName: payment.first_name,
+      lastName: payment.last_name,
+      method: payment.method,
+      amountUSD: String(payment.amount_usd ?? "0"),
+      amountHTG: payment.amount_htg ? String(payment.amount_htg) : null,
+      amount: String(payment.amount ?? "0"),
+      currency: payment.amount_htg ? "HTG" : "USD",
+      paymentProof: payment.proof_url,
+      status: payment.status,
+      type: payment.type,
+      relatedId: payment.related_id,
+      ipAddress: payment.ip_address,
+      createdAt: toIso(payment.created_at),
+      updatedAt: toIso(payment.updated_at),
+      validatedAt: null,
+      paidAt: null,
+      rejectedAt: null,
+      rejectionReason: null,
+      receptionPlatform: null,
+    }));
+
+    return NextResponse.json({ payments: normalizedPayments });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Erreur inconnue";

@@ -54,7 +54,25 @@ export function usePublicConfig() {
       fetch("/api/projects").then((r) => r.json()),
     ])
       .then(([cfg, proj]) => {
-        setData({ ...cfg, projects: proj.projects || [] });
+        const projects = Array.isArray(proj?.projects) ? proj.projects : [];
+        const normalizedProjects = projects.map((project: Record<string, unknown>) => {
+          const targetAmount =
+            project.targetAmount ?? project.goalAmount ?? project.currentAmount ?? "0";
+          return {
+            id: String(project.id ?? ""),
+            name: String(project.name ?? ""),
+            description: (project.description as string | null) ?? null,
+            targetAmount: String(targetAmount ?? "0"),
+            collectedAmount: String(project.collectedAmount ?? "0"),
+            startDate: String(project.startDate ?? project.createdAt ?? ""),
+            endDate: String(project.endDate ?? project.createdAt ?? ""),
+            status: String(project.status ?? "active"),
+            active: Boolean(project.active),
+            countdownId: (project.countdownId as string | null) ?? null,
+          };
+        });
+
+        setData({ ...cfg, projects: normalizedProjects });
       })
       .catch(() => {})
       .finally(() => setLoading(false));

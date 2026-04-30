@@ -18,6 +18,26 @@ type Project = {
   createdAt: string;
 };
 
+const toSafeNumber = (value: unknown): number => {
+  const num = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const toDateTimeLocal = (value: unknown): string => {
+  if (!value) return "";
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+};
+
+const toDateLabel = (value: unknown): string => {
+  if (!value) return "";
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("fr-FR");
+};
+
 export default function AdminProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,7 +64,11 @@ export default function AdminProjectsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    queueMicrotask(() => {
+      void load();
+    });
+  }, []);
 
   const showMsg = (m: string) => {
     setMessage(m);
@@ -61,9 +85,9 @@ export default function AdminProjectsPage() {
     setEditId(p.id);
     setName(p.name);
     setDescription(p.description || "");
-    setTargetAmount(p.targetAmount);
-    setStartDate(new Date(p.startDate).toISOString().slice(0, 16));
-    setEndDate(new Date(p.endDate).toISOString().slice(0, 16));
+    setTargetAmount(String(p.targetAmount ?? ""));
+    setStartDate(toDateTimeLocal(p.startDate));
+    setEndDate(toDateTimeLocal(p.endDate));
     setStatus(p.status);
     setShowForm(true);
   };
@@ -110,8 +134,8 @@ export default function AdminProjectsPage() {
     load();
   };
 
-  const totalTarget = projects.reduce((s, p) => s + parseFloat(p.targetAmount), 0);
-  const totalCollected = projects.reduce((s, p) => s + parseFloat(p.collectedAmount || "0"), 0);
+  const totalTarget = projects.reduce((s, p) => s + toSafeNumber(p.targetAmount), 0);
+  const totalCollected = projects.reduce((s, p) => s + toSafeNumber(p.collectedAmount), 0);
 
   const STATUS_COLORS: Record<string, string> = {
     upcoming: "bg-slate-100 text-slate-700",
@@ -212,8 +236,8 @@ export default function AdminProjectsPage() {
       ) : (
         <div className="space-y-4 stagger-children">
           {projects.map((p) => {
-            const collected = parseFloat(p.collectedAmount || "0");
-            const target = parseFloat(p.targetAmount);
+            const collected = toSafeNumber(p.collectedAmount);
+            const target = toSafeNumber(p.targetAmount);
             const remaining = Math.max(0, target - collected);
             const pct = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
 
@@ -246,7 +270,11 @@ export default function AdminProjectsPage() {
                     </div>
 
                     <div className="flex items-center gap-4 text-xs text-slate-400">
-                      <span>📅 {new Date(p.startDate).toLocaleDateString("fr-FR")} → {new Date(p.endDate).toLocaleDateString("fr-FR")}</span>
+                      <span>
+                        {toDateLabel(p.startDate) && toDateLabel(p.endDate)
+                          ? `📅 ${toDateLabel(p.startDate)} → ${toDateLabel(p.endDate)}`
+                          : ""}
+                      </span>
                     </div>
                   </div>
 

@@ -17,6 +17,17 @@ type Payment = {
   createdAt: string;
 };
 
+const toSafeNumber = (value: unknown): number => {
+  const num = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const formatSafeDate = (value: unknown): string => {
+  if (!value) return "";
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("fr-FR");
+};
+
 export default function DashboardPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -113,8 +124,8 @@ export default function DashboardPage() {
           <h2 className="font-bold text-slate-900 mb-4">📁 Projets actifs</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 stagger-children">
             {config.projects.map((p) => {
-              const collected = parseFloat(p.collectedAmount || "0");
-              const target = parseFloat(p.targetAmount);
+              const collected = toSafeNumber(p.collectedAmount);
+              const target = toSafeNumber(p.targetAmount);
               const remaining = Math.max(0, target - collected);
               const pct = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
               return (
@@ -316,7 +327,7 @@ export default function DashboardPage() {
                       </td>
                       <td className="px-6 py-4">
                         <span className="text-sm text-slate-500">
-                          {new Date(p.createdAt).toLocaleDateString("fr-FR")}
+                          {formatSafeDate(p.createdAt) || "—"}
                         </span>
                       </td>
                     </tr>

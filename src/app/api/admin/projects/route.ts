@@ -6,6 +6,11 @@ import { eq, desc, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
+function toSafeNumber(value: unknown): number {
+  const num = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(num) ? num : 0;
+}
+
 // GET - admin list all projects with stats
 export async function GET(req: NextRequest) {
   try {
@@ -43,7 +48,30 @@ export async function GET(req: NextRequest) {
       )
       .orderBy(desc(projects.created_at));
 
-    return NextResponse.json({ projects: result });
+    const normalized = result.map((project) => {
+      const goal = toSafeNumber(project.goalAmount);
+      const current = toSafeNumber(project.currentAmount);
+      const collected = toSafeNumber(project.collectedAmount);
+      const createdAt =
+        project.createdAt instanceof Date
+          ? project.createdAt.toISOString()
+          : String(project.createdAt);
+
+      return {
+        ...project,
+        goalAmount: goal.toString(),
+        currentAmount: current.toString(),
+        collectedAmount: collected.toString(),
+        targetAmount: goal.toString(),
+        startDate: createdAt,
+        endDate: createdAt,
+        countdownId: null,
+        createdAt,
+        paymentCount: toSafeNumber(project.paymentCount),
+      };
+    });
+
+    return NextResponse.json({ projects: normalized });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "";
     if (msg === "Unauthorized" || msg === "Forbidden") {
@@ -58,11 +86,20 @@ export async function POST(req: NextRequest) {
   try {
     await requireAdmin(req);
     const body = await req.json();
-    const { name, description, goalAmount, status, imageUrl } = body;
+    const { name, description, goalAmount, targetAmount, status, imageUrl } = body;
+    const resolvedGoalAmount = goalAmount ?? targetAmount;
 
-    if (!name || !goalAmount) {
+    if (!name || resolvedGoalAmount === undefined || resolvedGoalAmount === null) {
       return NextResponse.json(
         { error: "Nom et montant cible obligatoires" },
+        { status: 400 }
+      );
+    }
+
+    const goal = toSafeNumber(resolvedGoalAmount);
+    if (goal <= 0) {
+      return NextResponse.json(
+        { error: "Le montant cible doit être un nombre positif" },
         { status: 400 }
       );
     }
@@ -72,7 +109,7 @@ export async function POST(req: NextRequest) {
       .values({
         name,
         description: description || "",
-        goal_amount: String(goalAmount),
+        goal_amount: goal.toString(),
         current_amount: "0",
         status: status || "active",
         image_url: imageUrl || null,

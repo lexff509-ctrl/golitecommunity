@@ -83,7 +83,9 @@ export default function AdminDashboardPage() {
   };
 
   useEffect(() => {
-    fetchPayments();
+    queueMicrotask(() => {
+      void fetchPayments();
+    });
   }, []);
 
   const handleAction = async (

@@ -21,22 +21,19 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [user, setUser] = useState<{
+  const [user] = useState<{
     firstName: string;
     lastName: string;
     role: string;
-  } | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    // Read user from localStorage — instant, no API call
+  } | null>(() => {
     const stored = getStoredUser();
     if (stored && (stored.role === "client" || stored.role === "admin")) {
-      setUser(stored as { firstName: string; lastName: string; role: string });
+      return stored as { firstName: string; lastName: string; role: string };
     }
-    // If no user in localStorage, middleware should have redirected already
-  }, []);
+    return null;
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (!user) return;

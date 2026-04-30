@@ -48,6 +48,13 @@ const STATUS_MAP: Record<
   },
 };
 
+const formatSafeDate = (value: unknown, withTime = false): string => {
+  if (!value) return "—";
+  const date = new Date(String(value));
+  if (Number.isNaN(date.getTime())) return "—";
+  return withTime ? date.toLocaleString("fr-FR") : date.toLocaleDateString("fr-FR");
+};
+
 export default function HistoryPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [loading, setLoading] = useState(true);
@@ -162,7 +169,7 @@ export default function HistoryPage() {
                       )}
                       <span>•</span>
                       <span>
-                        {new Date(p.createdAt).toLocaleDateString("fr-FR")}
+                        {formatSafeDate(p.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -219,7 +226,7 @@ export default function HistoryPage() {
                       <div>
                         <p className="text-slate-400">Créé le</p>
                         <p className="font-medium text-slate-900">
-                          {new Date(p.createdAt).toLocaleString("fr-FR")}
+                          {formatSafeDate(p.createdAt, true)}
                         </p>
                       </div>
                     </div>
@@ -240,14 +247,14 @@ export default function HistoryPage() {
                     {p.status === "validated" && p.validatedAt && (
                       <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-700">
                         ✅ Validé le{" "}
-                        {new Date(p.validatedAt).toLocaleString("fr-FR")}
+                        {formatSafeDate(p.validatedAt, true)}
                       </div>
                     )}
 
                     {p.status === "paid" && p.paidAt && (
                       <div className="mt-3 p-3 bg-green-50 border border-green-200 rounded-xl text-sm text-green-700">
                         💰 Payé le{" "}
-                        {new Date(p.paidAt).toLocaleString("fr-FR")}
+                        {formatSafeDate(p.paidAt, true)}
                       </div>
                     )}
 
@@ -262,7 +269,7 @@ export default function HistoryPage() {
                         {p.rejectedAt && (
                           <span className="block text-xs text-red-500 mt-1">
                             Le{" "}
-                            {new Date(p.rejectedAt).toLocaleString("fr-FR")}
+                            {formatSafeDate(p.rejectedAt, true)}
                           </span>
                         )}
                       </div>

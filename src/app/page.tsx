@@ -6,6 +6,17 @@ import { getStoredUser } from "@/lib/api-client";
 import { usePublicConfig } from "@/lib/use-public-config";
 import Countdown from "@/components/Countdown";
 
+const toSafeNumber = (value: unknown): number => {
+  const num = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const formatSafeDate = (value: unknown): string => {
+  if (!value) return "";
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("fr-FR");
+};
+
 export default function HomePage() {
   const [checking, setChecking] = useState(false);
   const { data } = usePublicConfig();
@@ -129,13 +140,10 @@ export default function HomePage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children max-w-5xl mx-auto">
                 {data.projects.map((p) => {
-                 const collected = Number(p.collectedAmount ?? 0);
-                 const target = Number(p.targetAmount ?? 0);
-                 const remaining = Math.max(0, target - collected);
-                 const pct =
-                 target > 0
-                 ? Math.min(100, (collected / target) * 100)
-                 : 0;
+                  const collected = toSafeNumber(p.collectedAmount);
+                  const target = toSafeNumber(p.targetAmount);
+                  const remaining = Math.max(0, target - collected);
+                  const pct = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
                   return (
                     <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-6 card-hover">
                       <div className="flex items-center gap-2 mb-3">
@@ -159,7 +167,9 @@ export default function HomePage() {
                         </div>
                       </div>
                       <div className="text-xs text-slate-400">
-                        📅 {new Date(p.startDate).toLocaleDateString("fr-FR")} → {new Date(p.endDate).toLocaleDateString("fr-FR")}
+                        {formatSafeDate(p.startDate) && formatSafeDate(p.endDate)
+                          ? `📅 ${formatSafeDate(p.startDate)} → ${formatSafeDate(p.endDate)}`
+                          : ""}
                       </div>
                     </div>
                   );

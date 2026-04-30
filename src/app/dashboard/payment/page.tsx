@@ -28,6 +28,17 @@ type FormData = {
   receptionWallet: string;
 };
 
+const toSafeNumber = (value: unknown): number => {
+  const num = typeof value === "number" ? value : Number(value ?? 0);
+  return Number.isFinite(num) ? num : 0;
+};
+
+const formatSafeDate = (value: unknown): string => {
+  if (!value) return "";
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? "" : date.toLocaleDateString("fr-FR");
+};
+
 export default function NewPaymentPage() {
   const [step, setStep] = useState(1);
   const [uploading, setUploading] = useState(false);
@@ -174,10 +185,10 @@ export default function NewPaymentPage() {
 
   // Compute remaining for selected project
   const projCollected = selectedProject
-    ? parseFloat(selectedProject.collectedAmount || "0")
+    ? toSafeNumber(selectedProject.collectedAmount)
     : 0;
   const projTarget = selectedProject
-    ? parseFloat(selectedProject.targetAmount)
+    ? toSafeNumber(selectedProject.targetAmount)
     : 0;
   const projRemaining = Math.max(0, projTarget - projCollected);
   const projPct = projTarget > 0 ? Math.min(100, (projCollected / projTarget) * 100) : 0;
@@ -260,8 +271,8 @@ export default function NewPaymentPage() {
             ) : (
               <div className="space-y-3">
                 {projects.map((p) => {
-                  const collected = parseFloat(p.collectedAmount || "0");
-                  const target = parseFloat(p.targetAmount);
+                  const collected = toSafeNumber(p.collectedAmount);
+                  const target = toSafeNumber(p.targetAmount);
                   const remaining = Math.max(0, target - collected);
                   const pct = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
                   const isSelected = selectedProject?.id === p.id;
@@ -321,8 +332,9 @@ export default function NewPaymentPage() {
                       </div>
 
                       <p className="text-xs text-slate-400">
-                        📅 {new Date(p.startDate).toLocaleDateString("fr-FR")} →{" "}
-                        {new Date(p.endDate).toLocaleDateString("fr-FR")}
+                        {formatSafeDate(p.startDate) && formatSafeDate(p.endDate)
+                          ? `📅 ${formatSafeDate(p.startDate)} → ${formatSafeDate(p.endDate)}`
+                          : ""}
                       </p>
                     </button>
                   );

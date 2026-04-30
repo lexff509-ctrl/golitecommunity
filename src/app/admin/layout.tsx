@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { getStoredUser, clearAuth } from "@/lib/api-client";
@@ -18,19 +18,18 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [user, setUser] = useState<{
+  const [user] = useState<{
     firstName: string;
     lastName: string;
     role: string;
-  } | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  useEffect(() => {
+  } | null>(() => {
     const stored = getStoredUser();
     if (stored && stored.role === "admin") {
-      setUser(stored as { firstName: string; lastName: string; role: string });
+      return stored as { firstName: string; lastName: string; role: string };
     }
-  }, []);
+    return null;
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
