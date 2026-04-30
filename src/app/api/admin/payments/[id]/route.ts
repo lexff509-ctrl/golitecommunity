@@ -76,7 +76,7 @@ export async function PATCH(
         updateData.status = "validated";
         updateData.validatedAt = now;
         notificationTitle = "Paiement validé";
-        notificationMessage = `Votre paiement ${payment.transactionId} a été validé par l'administrateur.`;
+        notificationMessage = `Votre paiement ${payment.reference_code} a été validé par l'administrateur.`;
         logAction = "VALIDATED";
         break;
 
@@ -91,7 +91,7 @@ export async function PATCH(
         updateData.rejectedAt = now;
         updateData.rejectionReason = rejectionReason;
         notificationTitle = "Paiement rejeté";
-        notificationMessage = `Votre paiement ${payment.transactionId} a été rejeté. Raison: ${rejectionReason}`;
+        notificationMessage = `Votre paiement ${payment.reference_code} a été rejeté. Raison: ${rejectionReason}`;
         logAction = "REJECTED";
         break;
 
@@ -99,7 +99,7 @@ export async function PATCH(
         updateData.status = "paid";
         updateData.paidAt = now;
         notificationTitle = "Paiement effectué";
-        notificationMessage = `Votre paiement ${payment.transactionId} a été marqué comme payé.`;
+        notificationMessage = `Votre paiement ${payment.reference_code} a été marqué comme payé.`;
         logAction = "MARKED_AS_PAID";
         break;
 
@@ -121,7 +121,7 @@ export async function PATCH(
 
     // Notify client
     await db.insert(notifications).values({
-      userId: payment.userId,
+      user_id: payment.user_id,
       title: notificationTitle,
       message: notificationMessage,
       type:
@@ -135,8 +135,9 @@ export async function PATCH(
 
     // Log admin action
     await db.insert(adminLogs).values({
-      adminId: admin.id,
-      paymentId: id,
+      admin_id: admin.id,
+      target_type: "payment",
+      target_id: id,
       action: logAction,
       details: rejectionReason || adminNotes || null,
     });

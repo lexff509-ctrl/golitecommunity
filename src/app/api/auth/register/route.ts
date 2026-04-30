@@ -51,10 +51,10 @@ export async function POST(req: NextRequest) {
     const [newUser] = await db
       .insert(users)
       .values({
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         email: email.toLowerCase().trim(),
-        password: hashedPassword,
+        password_hash: hashedPassword,
         role: "client",
       })
       .returning({ id: users.id });

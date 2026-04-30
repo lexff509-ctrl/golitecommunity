@@ -20,33 +20,31 @@ export async function GET(
         id: projects.id,
         name: projects.name,
         description: projects.description,
-        targetAmount: projects.targetAmount,
-        startDate: projects.startDate,
-        endDate: projects.endDate,
+        goalAmount: projects.goal_amount,
+        currentAmount: projects.current_amount,
         status: projects.status,
         active: projects.active,
-        countdownId: projects.countdownId,
-        createdAt: projects.createdAt,
+        imageUrl: projects.image_url,
+        createdAt: projects.created_at,
         collectedAmount: sql<string>`coalesce(sum(
           case when ${payments.status} in ('validated', 'paid')
-          then ${payments.amountUSD}::numeric else 0 end
+          then ${payments.amount_usd}::numeric else 0 end
         ), 0)::text`,
         paymentCount: sql<number>`count(${payments.id})::int`,
       })
       .from(projects)
-      .leftJoin(payments, eq(projects.id, payments.projectId))
+      .leftJoin(payments, eq(projects.id, payments.project_id))
       .where(eq(projects.id, id))
       .groupBy(
         projects.id,
         projects.name,
         projects.description,
-        projects.targetAmount,
-        projects.startDate,
-        projects.endDate,
+        projects.goal_amount,
+        projects.current_amount,
         projects.status,
         projects.active,
-        projects.countdownId,
-        projects.createdAt,
+        projects.image_url,
+        projects.created_at,
       )
       .limit(1);
 
@@ -76,20 +74,18 @@ export async function PUT(
     await requireAdmin(req);
     const { id } = await params;
     const body = await req.json();
-    const { name, description, targetAmount, startDate, endDate, status, active, countdownId } = body;
+    const { name, description, goalAmount, status, active, imageUrl } = body;
 
     await db
       .update(projects)
       .set({
         ...(name !== undefined && { name }),
         ...(description !== undefined && { description }),
-        ...(targetAmount !== undefined && { targetAmount: String(targetAmount) }),
-        ...(startDate !== undefined && { startDate: new Date(startDate) }),
-        ...(endDate !== undefined && { endDate: new Date(endDate) }),
+        ...(goalAmount !== undefined && { goal_amount: String(goalAmount) }),
         ...(status !== undefined && { status }),
         ...(active !== undefined && { active }),
-        ...(countdownId !== undefined && { countdownId: countdownId || null }),
-        updatedAt: new Date(),
+        ...(imageUrl !== undefined && { image_url: imageUrl || null }),
+        updated_at: new Date(),
       })
       .where(eq(projects.id, id));
 
@@ -116,7 +112,7 @@ export async function DELETE(
     const payCount = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(payments)
-      .where(eq(payments.projectId, id));
+      .where(eq(payments.project_id, id));
 
     if (payCount[0].count > 0) {
       return NextResponse.json(

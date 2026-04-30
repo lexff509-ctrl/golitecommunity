@@ -75,7 +75,7 @@ export async function PUT(req: NextRequest) {
         ...(category !== undefined && { category }),
         ...(order !== undefined && { order }),
         ...(active !== undefined && { active }),
-        updatedAt: new Date(),
+        updated_at: new Date(),
       })
       .where(eq(faqs.id, id));
 

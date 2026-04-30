@@ -37,7 +37,7 @@ export async function createSession(userId: string): Promise<string> {
   const expiresAt = new Date(
     Date.now() + SESSION_DURATION_HOURS * 60 * 60 * 1000
   );
-  await db.insert(sessions).values({ userId, token, expiresAt });
+  await db.insert(sessions).values({ user_id: userId, token, expires_at: expiresAt });
   return token;
 }
 
@@ -63,14 +63,14 @@ async function validateToken(token: string): Promise<AuthUser | null> {
   const results = await db
     .select({
       id: users.id,
-      firstName: users.firstName,
-      lastName: users.lastName,
+      firstName: users.first_name,
+      lastName: users.last_name,
       email: users.email,
       role: users.role,
     })
     .from(sessions)
-    .innerJoin(users, eq(sessions.userId, users.id))
-    .where(and(eq(sessions.token, token), gt(sessions.expiresAt, now)))
+    .innerJoin(users, eq(sessions.user_id, users.id))
+    .where(and(eq(sessions.token, token), gt(sessions.expires_at, now)))
     .limit(1);
   if (results.length === 0) return null;
   const r = results[0];

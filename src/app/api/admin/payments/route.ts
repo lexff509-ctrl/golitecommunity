@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { payments, users } from "@/db/schema";
+import { payments, users, adminLogs, investments, cryptoTransactions } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { eq, desc, and, sql } from "drizzle-orm";
 
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
     }
     if (search) {
       whereConditions.push(
-        sql`(${payments.firstName} ILIKE ${"%" + search + "%"} OR ${payments.lastName} ILIKE ${"%" + search + "%"} OR ${payments.transactionId} ILIKE ${"%" + search + "%"})`
+        sql`(${users.email} ILIKE ${"%" + search + "%"} OR ${payments.reference_code} ILIKE ${"%" + search + "%"})`
       );
     }
 
@@ -38,32 +38,23 @@ export async function GET(req: NextRequest) {
     const result = await db
       .select({
         id: payments.id,
-        transactionId: payments.transactionId,
-        userId: payments.userId,
-        firstName: payments.firstName,
-        lastName: payments.lastName,
-        amountUSD: payments.amountUSD,
-        amountHTG: payments.amountHTG,
-        currency: payments.currency,
+        referenceCode: payments.reference_code,
+        userId: payments.user_id,
+        amount: payments.amount,
         method: payments.method,
         status: payments.status,
-        paymentProof: payments.paymentProof,
-        paymentProofFilename: payments.paymentProofFilename,
-        receptionPlatform: payments.receptionPlatform,
-        receptionDetails: payments.receptionDetails,
-        rejectionReason: payments.rejectionReason,
-        adminNotes: payments.adminNotes,
-        createdAt: payments.createdAt,
-        updatedAt: payments.updatedAt,
-        validatedAt: payments.validatedAt,
-        paidAt: payments.paidAt,
-        rejectedAt: payments.rejectedAt,
+        type: payments.type,
+        relatedId: payments.related_id,
+        proofUrl: payments.proof_url,
+        ipAddress: payments.ip_address,
+        createdAt: payments.created_at,
+        updatedAt: payments.updated_at,
         userEmail: users.email,
       })
       .from(payments)
-      .innerJoin(users, eq(payments.userId, users.id))
+      .innerJoin(users, eq(payments.user_id, users.id))
       .where(whereClause)
-      .orderBy(desc(payments.createdAt))
+      .orderBy(desc(payments.created_at))
       .limit(limit)
       .offset(offset);
 
@@ -75,14 +66,14 @@ export async function GET(req: NextRequest) {
         validated: sql<number>`count(*) filter (where ${payments.status} = 'validated')::int`,
         paid: sql<number>`count(*) filter (where ${payments.status} = 'paid')::int`,
         rejected: sql<number>`count(*) filter (where ${payments.status} = 'rejected')::int`,
-        totalAmount: sql<number>`coalesce(sum(${payments.amountUSD})::numeric, 0)`,
+        totalAmount: sql<number>`coalesce(sum(${payments.amount})::numeric, 0)`,
       })
       .from(payments);
 
     const totalFiltered = await db
       .select({ count: sql<number>`count(*)::int` })
       .from(payments)
-      .innerJoin(users, eq(payments.userId, users.id))
+      .innerJoin(users, eq(payments.user_id, users.id))
       .where(whereClause);
 
     return NextResponse.json({
@@ -112,6 +103,116 @@ export async function GET(req: NextRequest) {
       );
     }
     console.error("Admin payments error:", error);
+    return NextResponse.json(
+      { error: "Erreur serveur" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH - validate or reject payment
+export async function PATCH(req: NextRequest) {
+  try {
+    const session = await requireAdmin(req);
+
+    const body = await req.json();
+    const { id, status, rejectionReason } = body;
+
+    if (!id || !status) {
+      return NextResponse.json(
+        { error: "ID et status requis" },
+        { status: 400 }
+      );
+    }
+
+    // Validate status
+    if (!["validated", "rejected"].includes(status)) {
+      return NextResponse.json(
+        { error: "Status invalide. Utilisez 'validated' ou 'rejected'." },
+        { status: 400 }
+      );
+    }
+
+    // Get current payment
+    const [payment] = await db
+      .select()
+      .from(payments)
+      .where(eq(payments.id, id))
+      .limit(1);
+
+    if (!payment) {
+      return NextResponse.json(
+        { error: "Paiement introuvable" },
+        { status: 404 }
+      );
+    }
+
+    // Check if payment is still pending
+    if (payment.status !== "pending") {
+      return NextResponse.json(
+        { error: "Impossible de modifier un paiement qui n'est plus en attente" },
+        { status: 400 }
+      );
+    }
+
+    // Update payment status
+    const updatedPayment = await db.update(payments)
+      .set({
+        status,
+        updated_at: new Date(),
+      })
+      .where(eq(payments.id, id))
+      .returning();
+
+    // Sync related entity status
+    if (payment.related_id) {
+      if (status === "validated") {
+        if (payment.type === "investment") {
+          await db.update(investments)
+            .set({ status: "validated", updated_at: new Date() })
+            .where(eq(investments.id, payment.related_id));
+        } else if (payment.type === "crypto") {
+          await db.update(cryptoTransactions)
+            .set({ status: "validated", updated_at: new Date() })
+            .where(eq(cryptoTransactions.id, payment.related_id));
+        }
+      } else if (status === "rejected") {
+        if (payment.type === "investment") {
+          await db.update(investments)
+            .set({ status: "rejected", updated_at: new Date() })
+            .where(eq(investments.id, payment.related_id));
+        } else if (payment.type === "crypto") {
+          await db.update(cryptoTransactions)
+            .set({ status: "rejected", updated_at: new Date() })
+            .where(eq(cryptoTransactions.id, payment.related_id));
+        }
+      }
+    }
+
+    // Log action
+    await db.insert(adminLogs).values({
+      admin_id: session.id,
+      action: status === "validated" ? "validate_payment" : "reject_payment",
+      target_type: "payment",
+      target_id: id,
+      details: { status, rejectionReason },
+    });
+
+    return NextResponse.json({
+      payment: updatedPayment[0],
+      message: `Paiement ${status === "validated" ? "validé" : "rejeté"} avec succès`
+    });
+
+  } catch (error: unknown) {
+    const message =
+      error instanceof Error ? error.message : "Erreur inconnue";
+    if (message === "Unauthorized" || message === "Forbidden") {
+      return NextResponse.json(
+        { error: "Accès refusé" },
+        { status: message === "Unauthorized" ? 401 : 403 }
+      );
+    }
+    console.error("Admin payment update error:", error);
     return NextResponse.json(
       { error: "Erreur serveur" },
       { status: 500 }

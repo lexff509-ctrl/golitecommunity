@@ -26,10 +26,10 @@ async function seedAdmin() {
   const [admin] = await db
     .insert(users)
     .values({
-      firstName: "Admin",
-      lastName: "GoLite",
+      first_name: "Admin",
+      last_name: "GoLite",
       email: adminEmail,
-      password: hashedPassword,
+      password_hash: hashedPassword,
       role: "admin",
     })
     .returning({ id: users.id });

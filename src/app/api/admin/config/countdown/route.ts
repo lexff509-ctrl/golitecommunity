@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const result = await db
       .select()
       .from(countdowns)
-      .orderBy(desc(countdowns.createdAt))
+      .orderBy(desc(countdowns.created_at))
       .limit(1);
     return NextResponse.json({ countdown: result[0] || null });
   } catch (error: unknown) {
@@ -30,13 +30,13 @@ export async function PUT(req: NextRequest) {
   try {
     await requireAdmin(req);
     const body = await req.json();
-    const { title, targetDate, active, message } = body;
+    const { title, target_date, active, message } = body;
 
     // Get existing
     const existing = await db
       .select()
       .from(countdowns)
-      .orderBy(desc(countdowns.createdAt))
+      .orderBy(desc(countdowns.created_at))
       .limit(1);
 
     if (existing.length > 0) {
@@ -44,16 +44,16 @@ export async function PUT(req: NextRequest) {
         .update(countdowns)
         .set({
           ...(title !== undefined && { title }),
-          ...(targetDate !== undefined && { targetDate: new Date(targetDate) }),
+          ...(target_date !== undefined && { target_date: new Date(target_date) }),
           ...(active !== undefined && { active }),
           ...(message !== undefined && { message }),
-          updatedAt: new Date(),
+          updated_at: new Date(),
         })
         .where(eq(countdowns.id, existing[0].id));
     } else {
       await db.insert(countdowns).values({
         title: title || "Lancement du programme",
-        targetDate: targetDate ? new Date(targetDate) : new Date("2026-05-01T00:00:00Z"),
+        target_date: target_date ? new Date(target_date) : new Date("2026-05-01T00:00:00Z"),
         active: active !== undefined ? active : true,
         message: message || "",
       });

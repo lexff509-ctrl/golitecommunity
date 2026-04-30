@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { siteConfig } from "@/db/schema";
+import { settings } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   try {
     await requireAdmin(req);
-    const result = await db.select().from(siteConfig);
+    const result = await db.select().from(settings);
     return NextResponse.json({ config: result });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "";
@@ -35,20 +35,19 @@ export async function PUT(req: NextRequest) {
     for (const item of items) {
       const existing = await db
         .select()
-        .from(siteConfig)
-        .where(eq(siteConfig.key, item.key))
+        .from(settings)
+        .where(eq(settings.key, item.key))
         .limit(1);
 
       if (existing.length > 0) {
         await db
-          .update(siteConfig)
-          .set({ value: item.value, updatedAt: new Date() })
-          .where(eq(siteConfig.key, item.key));
+          .update(settings)
+          .set({ value: item.value, updated_at: new Date() })
+          .where(eq(settings.key, item.key));
       } else {
-        await db.insert(siteConfig).values({
+        await db.insert(settings).values({
           key: item.key,
           value: item.value,
-          category: "general",
         });
       }
     }

@@ -1,6 +1,6 @@
 import "dotenv/config";
 import { db } from "../db";
-import { countdowns, siteConfig, faqs, onboardingSteps, projects } from "../db/schema";
+import { countdowns, settings, faqs, onboardingSteps, projects } from "../db/schema";
 import { sql } from "drizzle-orm";
 
 async function seedContent() {
@@ -14,7 +14,7 @@ async function seedContent() {
   if (cdCount === 0) {
     await db.insert(countdowns).values({
       title: "🚀 Lancement du Programme GoLite",
-      targetDate: new Date("2026-05-01T00:00:00Z"),
+      target_date: new Date("2026-05-01T00:00:00Z"),
       active: true,
       message: "Rejoignez la communauté avant le lancement officiel !",
     });
@@ -23,23 +23,23 @@ async function seedContent() {
 
   // ── Site Config ──
   const configs = [
-    { key: "wallet_trc20", value: "TPYgjvcLB5Jps5zEmMPgRK8xHXip5iVuyJ", category: "payment" },
-    { key: "moncash_name", value: "Joseph Renato", category: "payment" },
-    { key: "moncash_phone", value: "+50931959375", category: "payment" },
-    { key: "pocket_option_link", value: "https://u3.shortink.io/register?utm_campaign=815190&utm_source=affiliate&utm_medium=sr&a=wwZbShSH8vSKIt&al=1752471&ac=golitecommunitybonus&cid=951966&code=WELCOME50", category: "links" },
-    { key: "youtube_trading_basics", value: "https://youtu.be/MGv_R_1EC6A?si=J-YoIhOqv1Umq1uu", category: "links" },
-    { key: "youtube_inscription_po", value: "https://youtu.be/XZbrdGCSUxA?si=5Nq_wskAPOj6O0X4", category: "links" },
-    { key: "youtube_wallet", value: "https://youtu.be/oIgmmZxlgp8?si=AhbLgGrvjzOExcHA", category: "links" },
-    { key: "support_link", value: "https://t.me/golitecommunity", category: "links" },
-    { key: "program_active", value: "true", category: "program" },
+    { key: "wallet_trc20", value: "TPYgjvcLB5Jps5zEmMPgRK8xHXip5iVuyJ" },
+    { key: "moncash_name", value: "Joseph Renato" },
+    { key: "moncash_phone", value: "+50931959375" },
+    { key: "pocket_option_link", value: "https://u3.shortink.io/register?utm_campaign=815190&utm_source=affiliate&utm_medium=sr&a=wwZbShSH8vSKIt&al=1752471&ac=golitecommunitybonus&cid=951966&code=WELCOME50" },
+    { key: "youtube_trading_basics", value: "https://youtu.be/MGv_R_1EC6A?si=J-YoIhOqv1Umq1uu" },
+    { key: "youtube_inscription_po", value: "https://youtu.be/XZbrdGCSUxA?si=5Nq_wskAPOj6O0X4" },
+    { key: "youtube_wallet", value: "https://youtu.be/oIgmmZxlgp8?si=AhbLgGrvjzOExcHA" },
+    { key: "support_link", value: "https://t.me/golitecommunity" },
+    { key: "program_active", value: "true" },
   ];
 
   for (const c of configs) {
     const existing = await db.execute(
-      sql`SELECT COUNT(*)::int as count FROM site_config WHERE key = ${c.key}`
+      sql`SELECT COUNT(*)::int as count FROM settings WHERE key = ${c.key}`
     );
     if ((existing.rows[0] as { count: number }).count === 0) {
-      await db.insert(siteConfig).values(c);
+      await db.insert(settings).values(c);
     }
   }
   console.log("  ✅ Site config créé");
@@ -69,26 +69,26 @@ async function seedContent() {
   if ((existingOnb.rows[0] as { count: number }).count === 0) {
     await db.insert(onboardingSteps).values([
       {
-        stepNumber: 1,
+        step_number: 1,
         title: "Base du trading",
         description: "Apprenez les fondamentaux du trading avec cette vidéo complète. Vous comprendrez les concepts de base avant de commencer.",
-        videoUrl: "https://youtu.be/MGv_R_1EC6A?si=J-YoIhOqv1Umq1uu",
+        video_url: "https://youtu.be/MGv_R_1EC6A?si=J-YoIhOqv1Umq1uu",
         icon: "📘",
       },
       {
-        stepNumber: 2,
+        step_number: 2,
         title: "Inscription Pocket Option",
         description: "Créez votre compte sur Pocket Option via notre lien de parrainage pour recevoir un bonus de bienvenue de 50%.",
-        videoUrl: "https://youtu.be/XZbrdGCSUxA?si=5Nq_wskAPOj6O0X4",
-        linkUrl: "https://u3.shortink.io/register?utm_campaign=815190&utm_source=affiliate&utm_medium=sr&a=wwZbShSH8vSKIt&al=1752471&ac=golitecommunitybonus&cid=951966&code=WELCOME50",
-        linkLabel: "S'inscrire sur Pocket Option",
+        video_url: "https://youtu.be/XZbrdGCSUxA?si=5Nq_wskAPOj6O0X4",
+        link_url: "https://u3.shortink.io/register?utm_campaign=815190&utm_source=affiliate&utm_medium=sr&a=wwZbShSH8vSKIt&al=1752471&ac=golitecommunitybonus&cid=951966&code=WELCOME50",
+        link_label: "S'inscrire sur Pocket Option",
         icon: "🪪",
       },
       {
-        stepNumber: 3,
+        step_number: 3,
         title: "Création portefeuille crypto",
         description: "Créez votre portefeuille crypto (Binance ou autre) pour gérer vos fonds et effectuer des dépôts/retraits.",
-        videoUrl: "https://youtu.be/oIgmmZxlgp8?si=AhbLgGrvjzOExcHA",
+        video_url: "https://youtu.be/oIgmmZxlgp8?si=AhbLgGrvjzOExcHA",
         icon: "💳",
       },
     ]);
@@ -109,11 +109,9 @@ async function seedContent() {
     await db.insert(projects).values({
       name: "Projet GoLite Mai 2026",
       description: "Premier projet d'investissement communautaire GoLite. Rejoignez-nous pour construire ensemble un avenir financier solide. Les fonds collectés serviront au lancement du programme éducatif trading.",
-      targetAmount: "2000",
-      startDate: new Date("2026-04-24T00:00:00Z"),
-      endDate: new Date("2026-05-01T00:00:00Z"),
+      goal_amount: "2000",
+      current_amount: "0",
       status: "active",
-      countdownId: cdId,
       active: true,
     });
     console.log("  ✅ Projet par défaut créé");

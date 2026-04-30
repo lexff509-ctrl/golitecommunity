@@ -16,34 +16,32 @@ export async function GET(req: NextRequest) {
         id: projects.id,
         name: projects.name,
         description: projects.description,
-        targetAmount: projects.targetAmount,
-        startDate: projects.startDate,
-        endDate: projects.endDate,
+        goalAmount: projects.goal_amount,
+        currentAmount: projects.current_amount,
         status: projects.status,
         active: projects.active,
-        countdownId: projects.countdownId,
-        createdAt: projects.createdAt,
+        imageUrl: projects.image_url,
+        createdAt: projects.created_at,
         collectedAmount: sql<string>`coalesce(sum(
           case when ${payments.status} in ('validated', 'paid')
-          then ${payments.amountUSD}::numeric else 0 end
+          then ${payments.amount_usd}::numeric else 0 end
         ), 0)::text`,
         paymentCount: sql<number>`count(${payments.id})::int`,
       })
       .from(projects)
-      .leftJoin(payments, eq(projects.id, payments.projectId))
+      .leftJoin(payments, eq(projects.id, payments.project_id))
       .groupBy(
         projects.id,
         projects.name,
         projects.description,
-        projects.targetAmount,
-        projects.startDate,
-        projects.endDate,
+        projects.goal_amount,
+        projects.current_amount,
         projects.status,
         projects.active,
-        projects.countdownId,
-        projects.createdAt,
+        projects.image_url,
+        projects.created_at,
       )
-      .orderBy(desc(projects.createdAt));
+      .orderBy(desc(projects.created_at));
 
     return NextResponse.json({ projects: result });
   } catch (error: unknown) {
@@ -60,11 +58,11 @@ export async function POST(req: NextRequest) {
   try {
     await requireAdmin(req);
     const body = await req.json();
-    const { name, description, targetAmount, startDate, endDate, status, countdownId } = body;
+    const { name, description, goalAmount, status, imageUrl } = body;
 
-    if (!name || !targetAmount || !startDate || !endDate) {
+    if (!name || !goalAmount) {
       return NextResponse.json(
-        { error: "Nom, montant cible, dates obligatoires" },
+        { error: "Nom et montant cible obligatoires" },
         { status: 400 }
       );
     }
@@ -74,11 +72,10 @@ export async function POST(req: NextRequest) {
       .values({
         name,
         description: description || "",
-        targetAmount: String(targetAmount),
-        startDate: new Date(startDate),
-        endDate: new Date(endDate),
-        status: status || "upcoming",
-        countdownId: countdownId || null,
+        goal_amount: String(goalAmount),
+        current_amount: "0",
+        status: status || "active",
+        image_url: imageUrl || null,
         active: true,
       })
       .returning();

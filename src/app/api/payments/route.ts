@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
     const result = await db
       .select()
       .from(payments)
-      .where(eq(payments.userId, user.id))
-      .orderBy(desc(payments.createdAt));
+      .where(eq(payments.user_id, user.id))
+      .orderBy(desc(payments.created_at));
 
     return NextResponse.json({ payments: result });
   } catch (error: unknown) {
@@ -99,23 +99,25 @@ export async function POST(req: NextRequest) {
 
     const transactionId = generateTransactionId();
 
+    const referenceCode = `REF-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+
     const [payment] = await db
       .insert(payments)
       .values({
-        transactionId,
-        userId: user.id,
-        projectId: projectId || null,
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        amountUSD: amount.toString(),
-        amountHTG: amountHTG ? amountHTG.toString() : null,
-        currency,
+        transaction_id: transactionId,
+        reference_code: referenceCode,
+        user_id: user.id,
+        project_id: projectId || null,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        amount_usd: amount.toString(),
+        amount_htg: amountHTG ? amountHTG.toString() : null,
+        amount: amount.toString(),
         method,
         status: "pending",
-        paymentProof,
-        paymentProofFilename: paymentProofFilename || null,
-        receptionPlatform: receptionPlatform || null,
-        receptionDetails: receptionDetails || null,
+        proof_url: paymentProof,
+        type: "payment",
+        related_id: null,
       })
       .returning();
 
@@ -127,7 +129,7 @@ export async function POST(req: NextRequest) {
 
     for (const admin of admins) {
       await db.insert(notifications).values({
-        userId: admin.id,
+        user_id: admin.id,
         title: "Nouveau paiement reçu",
         message: `${firstName} ${lastName} a soumis un paiement de ${amount} ${currency === "HTG" ? `(${amountHTG} HTG)` : "USD"} via ${method}.`,
         type: "info",
@@ -137,7 +139,7 @@ export async function POST(req: NextRequest) {
 
     // Notify client
     await db.insert(notifications).values({
-      userId: user.id,
+      user_id: user.id,
       title: "Paiement soumis",
       message: `Votre paiement ${transactionId} a été soumis avec succès. Statut: En attente.`,
       type: "success",

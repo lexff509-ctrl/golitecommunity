@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { countdowns, siteConfig, faqs, onboardingSteps } from "@/db/schema";
+import { countdowns, settings, faqs, onboardingSteps } from "@/db/schema";
 import { eq, asc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -13,7 +13,7 @@ export async function GET() {
       .where(eq(countdowns.active, true))
       .limit(1);
 
-    const config = await db.select().from(siteConfig);
+    const config = await db.select().from(settings);
 
     const faqList = await db
       .select()
@@ -25,7 +25,7 @@ export async function GET() {
       .select()
       .from(onboardingSteps)
       .where(eq(onboardingSteps.active, true))
-      .orderBy(asc(onboardingSteps.stepNumber));
+      .orderBy(asc(onboardingSteps.step_number));
 
     const configMap: Record<string, string> = {};
     config.forEach((c) => {

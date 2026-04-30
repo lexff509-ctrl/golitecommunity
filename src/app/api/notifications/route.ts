@@ -14,8 +14,8 @@ export async function GET(req: NextRequest) {
     const result = await db
       .select()
       .from(notifications)
-      .where(eq(notifications.userId, user.id))
-      .orderBy(desc(notifications.createdAt))
+      .where(eq(notifications.user_id, user.id))
+      .orderBy(desc(notifications.created_at))
       .limit(50);
 
     const [unreadCount] = await db
@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
       .from(notifications)
       .where(
         and(
-          eq(notifications.userId, user.id),
+          eq(notifications.user_id, user.id),
           eq(notifications.read, false)
         )
       );
@@ -55,7 +55,7 @@ export async function PATCH(req: NextRequest) {
         .set({ read: true })
         .where(
           and(
-            eq(notifications.userId, user.id),
+            eq(notifications.user_id, user.id),
             eq(notifications.read, false)
           )
         );
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest) {
         .where(
           and(
             eq(notifications.id, notificationId),
-            eq(notifications.userId, user.id)
+            eq(notifications.user_id, user.id)
           )
         );
     }

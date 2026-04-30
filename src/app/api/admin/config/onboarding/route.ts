@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
     const result = await db
       .select()
       .from(onboardingSteps)
-      .orderBy(asc(onboardingSteps.stepNumber));
+      .orderBy(asc(onboardingSteps.step_number));
     return NextResponse.json({ steps: result });
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : "";
@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
   try {
     await requireAdmin(req);
     const body = await req.json();
-    const { stepNumber, title, description, videoUrl, linkUrl, linkLabel, icon, active } = body;
+    const { step_number, title, description, video_url, link_url, link_label, icon, active } = body;
 
-    if (!stepNumber || !title) {
+    if (!step_number || !title) {
       return NextResponse.json(
         { error: "Numéro et titre obligatoires" },
         { status: 400 }
@@ -41,12 +41,12 @@ export async function POST(req: NextRequest) {
     const [step] = await db
       .insert(onboardingSteps)
       .values({
-        stepNumber,
+        step_number,
         title,
         description: description || "",
-        videoUrl: videoUrl || null,
-        linkUrl: linkUrl || null,
-        linkLabel: linkLabel || null,
+        video_url: video_url || null,
+        link_url: link_url || null,
+        link_label: link_label || null,
         icon: icon || null,
         active: active !== undefined ? active : true,
       })
@@ -67,7 +67,7 @@ export async function PUT(req: NextRequest) {
   try {
     await requireAdmin(req);
     const body = await req.json();
-    const { id, stepNumber, title, description, videoUrl, linkUrl, linkLabel, icon, active } = body;
+    const { id, step_number, title, description, video_url, link_url, link_label, icon, active } = body;
 
     if (!id) {
       return NextResponse.json({ error: "ID requis" }, { status: 400 });
@@ -76,15 +76,15 @@ export async function PUT(req: NextRequest) {
     await db
       .update(onboardingSteps)
       .set({
-        ...(stepNumber !== undefined && { stepNumber }),
+        ...(step_number !== undefined && { step_number }),
         ...(title !== undefined && { title }),
         ...(description !== undefined && { description }),
-        ...(videoUrl !== undefined && { videoUrl }),
-        ...(linkUrl !== undefined && { linkUrl }),
-        ...(linkLabel !== undefined && { linkLabel }),
+        ...(video_url !== undefined && { video_url }),
+        ...(link_url !== undefined && { link_url }),
+        ...(link_label !== undefined && { link_label }),
         ...(icon !== undefined && { icon }),
         ...(active !== undefined && { active }),
-        updatedAt: new Date(),
+        updated_at: new Date(),
       })
       .where(eq(onboardingSteps.id, id));
 

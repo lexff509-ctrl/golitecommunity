@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     const user = result[0];
-    const valid = await verifyPassword(password, user.password);
+    const valid = await verifyPassword(password, user.password_hash);
 
     if (!valid) {
       return NextResponse.json(
@@ -49,8 +49,8 @@ export async function POST(req: NextRequest) {
       token, // Return token in body for localStorage
       user: {
         id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
+        firstName: user.first_name,
+        lastName: user.last_name,
         email: user.email,
         role: user.role,
       },
