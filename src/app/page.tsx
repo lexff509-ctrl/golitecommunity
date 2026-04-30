@@ -129,10 +129,13 @@ export default function HomePage() {
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 stagger-children max-w-5xl mx-auto">
                 {data.projects.map((p) => {
-                  const collected = parseFloat(p.collectedAmount || "0");
-                  const target = parseFloat(p.targetAmount);
-                  const remaining = Math.max(0, target - collected);
-                  const pct = target > 0 ? Math.min(100, (collected / target) * 100) : 0;
+                 const collected = Number(p.collectedAmount ?? 0);
+                 const target = Number(p.targetAmount ?? 0);
+                 const remaining = Math.max(0, target - collected);
+                 const pct =
+                 target > 0
+                 ? Math.min(100, (collected / target) * 100)
+                 : 0;
                   return (
                     <div key={p.id} className="bg-white border border-slate-200 rounded-2xl p-6 card-hover">
                       <div className="flex items-center gap-2 mb-3">
