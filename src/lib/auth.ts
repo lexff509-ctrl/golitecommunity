@@ -29,6 +29,13 @@ export async function verifyPassword(
   password: string,
   hash: string
 ): Promise<boolean> {
+  // Backward compatibility: some legacy users may still have plain-text passwords.
+  // Keep login working, then accounts can be upgraded to bcrypt on successful login.
+  if (!hash) return false;
+  const isBcryptHash = /^\$2[aby]\$\d{2}\$/.test(hash);
+  if (!isBcryptHash) {
+    return password === hash;
+  }
   return bcrypt.compare(password, hash);
 }
 

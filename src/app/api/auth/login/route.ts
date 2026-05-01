@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
 import { users } from "@/db/schema";
-import { verifyPassword, createSession, getSessionCookieName } from "@/lib/auth";
+import {
+  verifyPassword,
+  createSession,
+  getSessionCookieName,
+  hashPassword,
+} from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -39,6 +44,16 @@ export async function POST(req: NextRequest) {
         { error: "Email ou mot de passe incorrect" },
         { status: 401 }
       );
+    }
+
+    // Auto-upgrade legacy plain-text passwords to bcrypt after successful login.
+    const isBcryptHash = /^\$2[aby]\$\d{2}\$/.test(user.password_hash);
+    if (!isBcryptHash) {
+      const upgradedHash = await hashPassword(password);
+      await db
+        .update(users)
+        .set({ password_hash: upgradedHash })
+        .where(eq(users.id, user.id));
     }
 
     const token = await createSession(user.id);
