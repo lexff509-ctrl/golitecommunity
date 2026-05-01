@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { cryptoTransactions, settings } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { cryptoTransactions } from "@/db/schema";
+import { desc, eq } from "drizzle-orm";
 import { getSessionUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -27,9 +27,9 @@ export async function GET(req: NextRequest) {
         status: cryptoTransactions.status,
         createdAt: cryptoTransactions.created_at,
       })
-            .from(cryptoTransactions)
+      .from(cryptoTransactions)
       .where(eq(cryptoTransactions.user_id, session.id))
-      .orderBy(cryptoTransactions.created_at);
+      .orderBy(desc(cryptoTransactions.created_at));
 
     return NextResponse.json(userCrypto);
   } catch (error) {
@@ -50,10 +50,10 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { amountHtg, cryptoType, network, walletAddress, paymentId } = body;
+    const { amountHtg, cryptoType, network, walletAddress } = body;
 
     // Validate required fields
-    if (!amountHtg || !cryptoType || !network || !walletAddress || !paymentId) {
+    if (!amountHtg || !cryptoType || !network || !walletAddress) {
       return NextResponse.json(
         { error: "Champs obligatoires manquants" },
         { status: 400 }

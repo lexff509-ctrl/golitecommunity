@@ -6,6 +6,12 @@ import { eq, desc, and, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
+function toIso(value: unknown): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
 // GET - list all payments for admin
 export async function GET(req: NextRequest) {
   try {
@@ -38,14 +44,19 @@ export async function GET(req: NextRequest) {
     const result = await db
       .select({
         id: payments.id,
+        transactionId: payments.transaction_id,
         referenceCode: payments.reference_code,
         userId: payments.user_id,
+        firstName: payments.first_name,
+        lastName: payments.last_name,
+        amountUSD: payments.amount_usd,
+        amountHTG: payments.amount_htg,
         amount: payments.amount,
         method: payments.method,
         status: payments.status,
         type: payments.type,
         relatedId: payments.related_id,
-        proofUrl: payments.proof_url,
+        paymentProof: payments.proof_url,
         ipAddress: payments.ip_address,
         createdAt: payments.created_at,
         updatedAt: payments.updated_at,
@@ -77,10 +88,26 @@ export async function GET(req: NextRequest) {
       .where(whereClause);
 
     return NextResponse.json({
-      payments: result,
+      payments: result.map((payment) => ({
+        ...payment,
+        amountUSD: String(payment.amountUSD ?? "0"),
+        amountHTG: payment.amountHTG ? String(payment.amountHTG) : null,
+        amount: String(payment.amount ?? "0"),
+        createdAt: toIso(payment.createdAt),
+        updatedAt: toIso(payment.updatedAt),
+        validatedAt: null,
+        paidAt: null,
+        rejectedAt: null,
+        rejectionReason: null,
+        adminNotes: null,
+        paymentProofFilename: null,
+        receptionPlatform: null,
+        receptionDetails: null,
+      })),
       stats: {
         total: stats.total,
         pending: stats.pending,
+        approved: stats.validated,
         validated: stats.validated,
         paid: stats.paid,
         rejected: stats.rejected,

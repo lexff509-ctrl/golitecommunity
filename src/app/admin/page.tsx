@@ -29,6 +29,27 @@ type Stats = {
   totalAmount: number;
 };
 
+type AdminUser = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  createdAt: string;
+};
+
+type CryptoLog = {
+  id: string;
+  userId: string;
+  userEmail: string;
+  amountHtg: string;
+  amountUsd: string;
+  cryptoType: string;
+  network: string;
+  status: string;
+  createdAt: string;
+};
+
 const STATUS_MAP: Record<
   string,
   { label: string; cls: string; icon: string }
@@ -57,6 +78,8 @@ const STATUS_MAP: Record<
 
 export default function AdminDashboardPage() {
   const [payments, setPayments] = useState<Payment[]>([]);
+  const [users, setUsers] = useState<AdminUser[]>([]);
+  const [cryptoLogs, setCryptoLogs] = useState<CryptoLog[]>([]);
   const [stats, setStats] = useState<Stats>({
     total: 0,
     pending: 0,
@@ -72,10 +95,20 @@ export default function AdminDashboardPage() {
 
   const fetchPayments = async () => {
     try {
-      const res = await apiFetch("/api/admin/payments?status=all");
-      const data = await res.json();
-      setPayments(data.payments || []);
-      if (data.stats) setStats(data.stats);
+      const [paymentsRes, usersRes, cryptoRes] = await Promise.all([
+        apiFetch("/api/admin/payments?status=all"),
+        apiFetch("/api/admin/users?page=1"),
+        apiFetch("/api/admin/crypto?page=1"),
+      ]);
+      const [paymentsData, usersData, cryptoData] = await Promise.all([
+        paymentsRes.json(),
+        usersRes.json(),
+        cryptoRes.json(),
+      ]);
+      setPayments(paymentsData.payments || []);
+      setUsers(usersData.users || []);
+      setCryptoLogs(cryptoData.cryptoTransactions || []);
+      if (paymentsData.stats) setStats(paymentsData.stats);
     } catch {
       // silent
     }
@@ -131,6 +164,94 @@ export default function AdminDashboardPage() {
         <p className="text-slate-500 mt-1">
           Vue d&apos;ensemble des transactions
         </p>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <h2 className="font-bold text-slate-900">
+              👥 Utilisateurs récents
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-xs font-medium text-slate-500 uppercase bg-slate-50">
+                  <th className="px-6 py-3">Nom</th>
+                  <th className="px-6 py-3">Email</th>
+                  <th className="px-6 py-3">Rôle</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {users.slice(0, 8).map((u) => (
+                  <tr key={u.id}>
+                    <td className="px-6 py-3 text-sm text-slate-900">
+                      {u.firstName} {u.lastName}
+                    </td>
+                    <td className="px-6 py-3 text-sm text-slate-600">{u.email}</td>
+                    <td className="px-6 py-3 text-sm">
+                      <span className="inline-flex px-2 py-0.5 rounded-full border text-xs bg-slate-100 text-slate-700 border-slate-200">
+                        {u.role}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {users.length === 0 && (
+                  <tr>
+                    <td colSpan={3} className="px-6 py-8 text-center text-slate-400">
+                      Aucun utilisateur trouvé
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+            <h2 className="font-bold text-slate-900">
+              🧾 Logs crypto
+            </h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr className="text-left text-xs font-medium text-slate-500 uppercase bg-slate-50">
+                  <th className="px-6 py-3">Utilisateur</th>
+                  <th className="px-6 py-3">Montant</th>
+                  <th className="px-6 py-3">Crypto</th>
+                  <th className="px-6 py-3">Statut</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {cryptoLogs.slice(0, 8).map((c) => (
+                  <tr key={c.id}>
+                    <td className="px-6 py-3 text-sm text-slate-600">{c.userEmail}</td>
+                    <td className="px-6 py-3 text-sm text-slate-900">
+                      {c.amountUsd} USD
+                    </td>
+                    <td className="px-6 py-3 text-sm text-slate-600">
+                      {c.cryptoType} ({c.network})
+                    </td>
+                    <td className="px-6 py-3 text-sm">
+                      <span className="inline-flex px-2 py-0.5 rounded-full border text-xs bg-slate-100 text-slate-700 border-slate-200">
+                        {c.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+                {cryptoLogs.length === 0 && (
+                  <tr>
+                    <td colSpan={4} className="px-6 py-8 text-center text-slate-400">
+                      Aucun log crypto
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
 
       {/* Stats */}

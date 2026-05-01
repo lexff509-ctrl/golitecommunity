@@ -1,23 +1,79 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { payments, notifications, adminLogs } from "@/db/schema";
+import { payments, notifications, adminLogs, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
+function toIso(value: unknown): string | null {
+  if (!value) return null;
+  const date = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+function mapPayment(row: typeof payments.$inferSelect & { userEmail?: string }) {
+  return {
+    id: row.id,
+    transactionId: row.transaction_id,
+    referenceCode: row.reference_code,
+    userId: row.user_id,
+    firstName: row.first_name,
+    lastName: row.last_name,
+    amountUSD: String(row.amount_usd ?? "0"),
+    amountHTG: row.amount_htg ? String(row.amount_htg) : null,
+    amount: String(row.amount ?? "0"),
+    method: row.method,
+    status: row.status,
+    type: row.type,
+    paymentProof: row.proof_url,
+    paymentProofFilename: null,
+    receptionPlatform: null,
+    receptionDetails: null,
+    rejectionReason: null,
+    adminNotes: null,
+    createdAt: toIso(row.created_at),
+    validatedAt: null,
+    paidAt: null,
+    rejectedAt: null,
+    updatedAt: toIso(row.updated_at),
+    userEmail: row.userEmail || null,
+  };
+}
+
 // GET - get single payment detail
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdmin(_req);
+    await requireAdmin(req);
     const { id } = await params;
 
     const result = await db
-      .select()
+      .select({
+        id: payments.id,
+        transaction_id: payments.transaction_id,
+        reference_code: payments.reference_code,
+        user_id: payments.user_id,
+        project_id: payments.project_id,
+        first_name: payments.first_name,
+        last_name: payments.last_name,
+        method: payments.method,
+        amount_usd: payments.amount_usd,
+        amount_htg: payments.amount_htg,
+        amount: payments.amount,
+        proof_url: payments.proof_url,
+        status: payments.status,
+        type: payments.type,
+        related_id: payments.related_id,
+        ip_address: payments.ip_address,
+        created_at: payments.created_at,
+        updated_at: payments.updated_at,
+        userEmail: users.email,
+      })
       .from(payments)
+      .innerJoin(users, eq(payments.user_id, users.id))
       .where(eq(payments.id, id))
       .limit(1);
 
@@ -28,12 +84,15 @@ export async function GET(
       );
     }
 
-    return NextResponse.json({ payment: result[0] });
+    return NextResponse.json({ payment: mapPayment(result[0]) });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Erreur inconnue";
     if (message === "Unauthorized" || message === "Forbidden") {
-      return NextResponse.json({ error: "Accès refusé" }, { status: 403 });
+      return NextResponse.json(
+        { error: "Accès refusé" },
+        { status: message === "Unauthorized" ? 401 : 403 }
+      );
     }
     return NextResponse.json({ error: "Erreur serveur" }, { status: 500 });
   }
@@ -64,17 +123,14 @@ export async function PATCH(
     }
 
     const payment = result[0];
-    const now = new Date();
-
-    let updateData: Record<string, unknown> = { updatedAt: now };
+    let updateStatus: "validated" | "rejected" | "paid";
     let notificationTitle = "";
     let notificationMessage = "";
     let logAction = "";
 
     switch (action) {
       case "validate":
-        updateData.status = "validated";
-        updateData.validatedAt = now;
+        updateStatus = "validated";
         notificationTitle = "Paiement validé";
         notificationMessage = `Votre paiement ${payment.reference_code} a été validé par l'administrateur.`;
         logAction = "VALIDATED";
@@ -87,17 +143,14 @@ export async function PATCH(
             { status: 400 }
           );
         }
-        updateData.status = "rejected";
-        updateData.rejectedAt = now;
-        updateData.rejectionReason = rejectionReason;
+        updateStatus = "rejected";
         notificationTitle = "Paiement rejeté";
         notificationMessage = `Votre paiement ${payment.reference_code} a été rejeté. Raison: ${rejectionReason}`;
         logAction = "REJECTED";
         break;
 
       case "pay":
-        updateData.status = "paid";
-        updateData.paidAt = now;
+        updateStatus = "paid";
         notificationTitle = "Paiement effectué";
         notificationMessage = `Votre paiement ${payment.reference_code} a été marqué comme payé.`;
         logAction = "MARKED_AS_PAID";
@@ -110,13 +163,12 @@ export async function PATCH(
         );
     }
 
-    if (adminNotes) {
-      updateData.adminNotes = adminNotes;
-    }
-
     await db
       .update(payments)
-      .set(updateData)
+      .set({
+        status: updateStatus,
+        updated_at: new Date(),
+      })
       .where(eq(payments.id, id));
 
     // Notify client
@@ -139,10 +191,43 @@ export async function PATCH(
       target_type: "payment",
       target_id: id,
       action: logAction,
-      details: rejectionReason || adminNotes || null,
+      details: {
+        rejectionReason: rejectionReason || null,
+        adminNotes: adminNotes || null,
+      },
     });
 
-    return NextResponse.json({ message: "Statut mis à jour avec succès" });
+    const [updated] = await db
+      .select({
+        id: payments.id,
+        transaction_id: payments.transaction_id,
+        reference_code: payments.reference_code,
+        user_id: payments.user_id,
+        project_id: payments.project_id,
+        first_name: payments.first_name,
+        last_name: payments.last_name,
+        method: payments.method,
+        amount_usd: payments.amount_usd,
+        amount_htg: payments.amount_htg,
+        amount: payments.amount,
+        proof_url: payments.proof_url,
+        status: payments.status,
+        type: payments.type,
+        related_id: payments.related_id,
+        ip_address: payments.ip_address,
+        created_at: payments.created_at,
+        updated_at: payments.updated_at,
+        userEmail: users.email,
+      })
+      .from(payments)
+      .innerJoin(users, eq(payments.user_id, users.id))
+      .where(eq(payments.id, id))
+      .limit(1);
+
+    return NextResponse.json({
+      message: "Statut mis à jour avec succès",
+      payment: updated ? mapPayment(updated) : null,
+    });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Erreur inconnue";

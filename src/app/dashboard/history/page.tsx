@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Image from "next/image";
 import { apiFetch } from "@/lib/api-client";
 
 type Payment = {
@@ -236,11 +237,16 @@ export default function HistoryPage() {
                         <p className="text-slate-400 text-sm mb-2">
                           Preuve de paiement
                         </p>
-                        <img
-                          src={p.paymentProof}
-                          alt="Preuve"
-                          className="max-h-48 rounded-lg border border-slate-200"
-                        />
+                        <div className="relative w-full max-w-md h-48 rounded-lg border border-slate-200 overflow-hidden bg-slate-50">
+                          <Image
+                            src={p.paymentProof}
+                            alt="Preuve"
+                            fill
+                            className="object-contain"
+                            sizes="(max-width: 768px) 100vw, 448px"
+                            unoptimized
+                          />
+                        </div>
                       </div>
                     )}
 

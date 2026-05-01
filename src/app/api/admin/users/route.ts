@@ -33,6 +33,8 @@ export async function GET(req: NextRequest) {
     const allUsers = await db
       .select({
         id: users.id,
+        firstName: users.first_name,
+        lastName: users.last_name,
         email: users.email,
         role: users.role,
         createdAt: users.created_at,
@@ -48,7 +50,7 @@ export async function GET(req: NextRequest) {
       .select({
         total: sql<number>`count(*)::int`,
         admins: sql<number>`count(*) filter (where ${users.role} = 'admin')::int`,
-        users: sql<number>`count(*) filter (where ${users.role} = 'user')::int`,
+        users: sql<number>`count(*) filter (where ${users.role} = 'client')::int`,
       })
       .from(users);
 

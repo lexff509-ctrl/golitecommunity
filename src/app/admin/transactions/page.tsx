@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { apiFetch } from "@/lib/api-client";
 
 type Payment = {
@@ -446,11 +447,16 @@ function TransactionsContent() {
                       <h3 className="text-sm font-bold text-slate-700 mb-2">
                         📥 Preuve de paiement
                       </h3>
-                      <img
-                        src={detailPayment.paymentProof}
-                        alt="Preuve"
-                        className="w-full rounded-xl border border-slate-200 max-h-80 object-contain"
-                      />
+                      <div className="relative w-full h-80 rounded-xl border border-slate-200 overflow-hidden bg-slate-50">
+                        <Image
+                          src={detailPayment.paymentProof}
+                          alt="Preuve"
+                          fill
+                          className="object-contain"
+                          sizes="(max-width: 1024px) 100vw, 512px"
+                          unoptimized
+                        />
+                      </div>
                       {detailPayment.paymentProofFilename && (
                         <p className="text-xs text-slate-500 mt-1">
                           {detailPayment.paymentProofFilename}

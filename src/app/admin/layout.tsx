@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { getStoredUser, clearAuth } from "@/lib/api-client";
+import { getStoredToken, getStoredUser, clearAuth } from "@/lib/api-client";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: "📊" },
@@ -18,24 +18,34 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [user] = useState<{
+  const user = useSyncExternalStore<{
     firstName: string;
     lastName: string;
     role: string;
-  } | null>(() => {
-    const stored = getStoredUser();
-    if (stored && stored.role === "admin") {
-      return stored as { firstName: string; lastName: string; role: string };
-    }
-    return null;
-  });
+  } | null>(
+    () => () => {},
+    () => {
+      const stored = getStoredUser();
+      if (stored && stored.role === "admin") {
+        return stored as { firstName: string; lastName: string; role: string };
+      }
+      return null;
+    },
+    () => null
+  );
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (!user) {
+      window.location.replace("/login");
+    }
+  }, [user]);
 
   const handleLogout = async () => {
     try {
       await fetch("/api/auth/logout", {
         method: "POST",
-        headers: { "x-session-token": localStorage.getItem("golite_token") || "" },
+        headers: { "x-session-token": getStoredToken() || "" },
       });
     } catch {
       // ignore

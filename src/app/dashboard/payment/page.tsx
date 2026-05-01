@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { apiFetch } from "@/lib/api-client";
 import { usePublicConfig, type PublicProject } from "@/lib/use-public-config";
 import WalletDisplay from "@/components/WalletDisplay";
@@ -594,11 +595,16 @@ export default function NewPaymentPage() {
             <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:border-green-400 transition-colors">
               {form.paymentProof ? (
                 <div className="space-y-3">
-                  <img
-                    src={form.paymentProof}
-                    alt="Preuve"
-                    className="max-h-64 mx-auto rounded-lg object-contain"
-                  />
+                  <div className="relative h-64 max-w-md mx-auto rounded-lg overflow-hidden bg-slate-50">
+                    <Image
+                      src={form.paymentProof}
+                      alt="Preuve"
+                      fill
+                      className="object-contain"
+                      sizes="(max-width: 768px) 100vw, 448px"
+                      unoptimized
+                    />
+                  </div>
                   <p className="text-sm text-green-600 font-medium">
                     ✓ Image uploadée
                   </p>

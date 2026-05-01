@@ -271,7 +271,7 @@ export default function HomePage() {
       <footer className="bg-white border-t border-slate-200 py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <p className="text-slate-400 text-sm">
-            © {new Date().getFullYear()} GoLite Community Support. Tous droits
+            © <span suppressHydrationWarning>{new Date().getFullYear()}</span> GoLite Community Support. Tous droits
             réservés.
           </p>
         </div>

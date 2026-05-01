@@ -85,11 +85,12 @@ export default function DashboardPage() {
       )}
 
       {/* Quick Links */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 stagger-children">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 stagger-children">
         {[
           { href: "/dashboard/onboarding", label: "🚀 Start Here", desc: "Onboarding" },
           { href: config?.config?.pocket_option_link || "#", label: "📈 Pocket Option", desc: "Trading", external: true },
           { href: "/dashboard/payment", label: "💰 Paiement", desc: "Envoyer" },
+          { href: "/dashboard/invest", label: "🪙 Crypto", desc: "Achat/Vente" },
           { href: "/dashboard/faq", label: "❓ FAQ", desc: "Aide" },
         ].map((link, i) =>
           link.external ? (
