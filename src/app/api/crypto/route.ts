@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rate = normalizedMode === "buy" ? CRYPTO_BUY_RATE : CRYPTO_SELL_RATE;
-    const sellFeeFixedUsd = 5;
+    const sellFeeFixedUsd = receptionPlatform === "Meru" ? 5 : 0;
     const sellFeePct = 0.02;
 
     const amountHtgNum =

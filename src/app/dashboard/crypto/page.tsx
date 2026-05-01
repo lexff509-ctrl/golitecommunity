@@ -40,7 +40,10 @@ export default function CryptoPage() {
   const amount = Number(amountUsd || 0);
   const buyPayHtg = amount > 0 ? amount * BUY_RATE : 0;
 
-  const sellFeeFixedUsd = 5;
+  // Vente:
+  // - Fee 2% pour tout le monde
+  // - Meru: + 5 USD
+  const sellFeeFixedUsd = receptionPlatform === "Meru" ? 5 : 0;
   const sellFeePct = 0.02;
   const sellAfterFixed = Math.max(0, amount - sellFeeFixedUsd);
   const sellFeePctUsd = sellAfterFixed * sellFeePct;
