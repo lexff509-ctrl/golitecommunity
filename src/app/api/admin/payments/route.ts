@@ -1,15 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { payments, users, adminLogs, investments, cryptoTransactions } from "@/db/schema";
+import {
+  payments,
+  users,
+  adminLogs,
+  investments,
+  cryptoTransactions,
+  settings,
+} from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
-import { eq, desc, and, sql } from "drizzle-orm";
+import { eq, desc, and, sql, inArray } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
+const RECEPTION_KEY_PREFIX = "payment_reception:";
 
 function toIso(value: unknown): string | null {
   if (!value) return null;
   const date = value instanceof Date ? value : new Date(String(value));
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
+}
+
+type ReceptionPayload = {
+  receptionPlatform: string | null;
+  receptionDetails: Record<string, string> | null;
+};
+
+function buildReceptionMap(
+  rows: Array<{ key: string; value: string }>
+): Record<string, ReceptionPayload> {
+  const map: Record<string, ReceptionPayload> = {};
+  for (const row of rows) {
+    const paymentId = row.key.replace(RECEPTION_KEY_PREFIX, "");
+    try {
+      const parsed = JSON.parse(row.value) as ReceptionPayload;
+      map[paymentId] = {
+        receptionPlatform: parsed?.receptionPlatform ?? null,
+        receptionDetails: parsed?.receptionDetails ?? null,
+      };
+    } catch {
+      map[paymentId] = { receptionPlatform: null, receptionDetails: null };
+    }
+  }
+  return map;
 }
 
 // GET - list all payments for admin
@@ -69,6 +101,19 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .offset(offset);
 
+    const receptionKeys = result.map((p) => `${RECEPTION_KEY_PREFIX}${p.id}`);
+    const receptionRows =
+      receptionKeys.length > 0
+        ? await db
+            .select({
+              key: settings.key,
+              value: settings.value,
+            })
+            .from(settings)
+            .where(inArray(settings.key, receptionKeys))
+        : [];
+    const receptionMap = buildReceptionMap(receptionRows);
+
     // Get stats
     const [stats] = await db
       .select({
@@ -101,8 +146,8 @@ export async function GET(req: NextRequest) {
         rejectionReason: null,
         adminNotes: null,
         paymentProofFilename: null,
-        receptionPlatform: null,
-        receptionDetails: null,
+        receptionPlatform: receptionMap[payment.id]?.receptionPlatform ?? null,
+        receptionDetails: receptionMap[payment.id]?.receptionDetails ?? null,
       })),
       stats: {
         total: stats.total,

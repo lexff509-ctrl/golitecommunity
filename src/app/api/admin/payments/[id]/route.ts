@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { payments, notifications, adminLogs, users } from "@/db/schema";
+import { payments, notifications, adminLogs, users, settings } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
+const RECEPTION_KEY_PREFIX = "payment_reception:";
 
 function toIso(value: unknown): string | null {
   if (!value) return null;
@@ -12,7 +13,36 @@ function toIso(value: unknown): string | null {
   return Number.isNaN(date.getTime()) ? null : date.toISOString();
 }
 
-function mapPayment(row: typeof payments.$inferSelect & { userEmail?: string }) {
+type MappedPayment = {
+  id: string;
+  transactionId: string;
+  referenceCode: string;
+  userId: string;
+  firstName: string;
+  lastName: string;
+  amountUSD: string;
+  amountHTG: string | null;
+  amount: string;
+  method: string;
+  status: string;
+  type: string;
+  paymentProof: string;
+  paymentProofFilename: string | null;
+  receptionPlatform: string | null;
+  receptionDetails: Record<string, string> | null;
+  rejectionReason: string | null;
+  adminNotes: string | null;
+  createdAt: string | null;
+  validatedAt: string | null;
+  paidAt: string | null;
+  rejectedAt: string | null;
+  updatedAt: string | null;
+  userEmail: string | null;
+};
+
+function mapPayment(
+  row: typeof payments.$inferSelect & { userEmail?: string }
+): MappedPayment {
   return {
     id: row.id,
     transactionId: row.transaction_id,
@@ -83,8 +113,28 @@ export async function GET(
         { status: 404 }
       );
     }
+    const mapped = mapPayment(result[0]);
+    const reception = await db
+      .select({
+        value: settings.value,
+      })
+      .from(settings)
+      .where(eq(settings.key, `${RECEPTION_KEY_PREFIX}${id}`))
+      .limit(1);
+    if (reception.length > 0) {
+      try {
+        const parsed = JSON.parse(reception[0].value) as {
+          receptionPlatform?: string | null;
+          receptionDetails?: Record<string, string> | null;
+        };
+        mapped.receptionPlatform = parsed?.receptionPlatform ?? null;
+        mapped.receptionDetails = parsed?.receptionDetails ?? null;
+      } catch {
+        // keep null values when malformed
+      }
+    }
 
-    return NextResponse.json({ payment: mapPayment(result[0]) });
+    return NextResponse.json({ payment: mapped });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Erreur inconnue";
@@ -224,9 +274,32 @@ export async function PATCH(
       .where(eq(payments.id, id))
       .limit(1);
 
+    const mapped = updated ? mapPayment(updated) : null;
+    if (mapped) {
+      const reception = await db
+        .select({
+          value: settings.value,
+        })
+        .from(settings)
+        .where(eq(settings.key, `${RECEPTION_KEY_PREFIX}${id}`))
+        .limit(1);
+      if (reception.length > 0) {
+        try {
+          const parsed = JSON.parse(reception[0].value) as {
+            receptionPlatform?: string | null;
+            receptionDetails?: Record<string, string> | null;
+          };
+          mapped.receptionPlatform = parsed?.receptionPlatform ?? null;
+          mapped.receptionDetails = parsed?.receptionDetails ?? null;
+        } catch {
+          // keep null values when malformed
+        }
+      }
+    }
+
     return NextResponse.json({
       message: "Statut mis à jour avec succès",
-      payment: updated ? mapPayment(updated) : null,
+      payment: mapped,
     });
   } catch (error: unknown) {
     const message =
