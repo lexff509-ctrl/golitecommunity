@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect, useSyncExternalStore } from "react";
+import { useState, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { getStoredToken, getStoredUser, clearAuth } from "@/lib/api-client";
+import { getStoredToken, saveAuth, clearAuth } from "@/lib/api-client";
 
 const NAV_ITEMS = [
   { href: "/dashboard", label: "Tableau de bord", icon: "📊" },
@@ -21,29 +21,45 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const user = useSyncExternalStore<{
+  const [user, setUser] = useState<{
     firstName: string;
     lastName: string;
     role: string;
-  } | null>(
-    () => () => {},
-    () => {
-      const stored = getStoredUser();
-      if (stored && (stored.role === "client" || stored.role === "admin")) {
-        return stored as { firstName: string; lastName: string; role: string };
-      }
-      return null;
-    },
-    () => null
-  );
+  } | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
-    if (!user) {
+    const checkSession = async () => {
+      try {
+        const res = await fetch("/api/auth/me", {
+          headers: { "x-session-token": getStoredToken() || "" },
+        });
+        const data = await res.json();
+        if (data?.user) {
+          setUser(data.user);
+          const token = getStoredToken();
+          if (token) {
+            saveAuth(token, data.user);
+          }
+        } else {
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      }
+      setCheckingAuth(false);
+    };
+
+    void checkSession();
+  }, []);
+
+  useEffect(() => {
+    if (!checkingAuth && !user) {
       window.location.replace("/login");
     }
-  }, [user]);
+  }, [checkingAuth, user]);
 
   useEffect(() => {
     if (!user) return;
@@ -79,7 +95,7 @@ export default function DashboardLayout({
   };
 
   // Show minimal loading while localStorage is read
-  if (!user) {
+  if (checkingAuth || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50/50 via-blue-50/30 to-slate-50">
         <div className="text-center">

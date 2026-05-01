@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { getStoredToken, getStoredUser, clearAuth } from "@/lib/api-client";
+import { getStoredToken, saveAuth, clearAuth } from "@/lib/api-client";
 
 const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: "📊" },
@@ -18,28 +18,44 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const user = useSyncExternalStore<{
+  const [user, setUser] = useState<{
     firstName: string;
     lastName: string;
     role: string;
-  } | null>(
-    () => () => {},
-    () => {
-      const stored = getStoredUser();
-      if (stored && stored.role === "admin") {
-        return stored as { firstName: string; lastName: string; role: string };
-      }
-      return null;
-    },
-    () => null
-  );
+  } | null>(null);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    const checkSession = async () => {
+      try {
+        const res = await fetch("/api/auth/me", {
+          headers: { "x-session-token": getStoredToken() || "" },
+        });
+        const data = await res.json();
+        if (data?.user?.role === "admin") {
+          setUser(data.user);
+          const token = getStoredToken();
+          if (token) {
+            saveAuth(token, data.user);
+          }
+        } else {
+          setUser(null);
+        }
+      } catch {
+        setUser(null);
+      }
+      setCheckingAuth(false);
+    };
+
+    void checkSession();
+  }, []);
+
+  useEffect(() => {
+    if (!checkingAuth && !user) {
       window.location.replace("/login");
     }
-  }, [user]);
+  }, [checkingAuth, user]);
 
   const handleLogout = async () => {
     try {
@@ -54,7 +70,7 @@ export default function AdminLayout({
     window.location.replace("/login");
   };
 
-  if (!user) {
+  if (checkingAuth || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-50 to-blue-50/30">
         <div className="text-center">
