@@ -46,6 +46,9 @@ type CryptoLog = {
   amountUsd: string;
   cryptoType: string;
   network: string;
+  paymentMethod: string | null;
+  paymentProof: string | null;
+  receptionPlatform: string | null;
   status: string;
   createdAt: string;
 };
@@ -229,10 +232,23 @@ export default function AdminDashboardPage() {
                   <tr key={c.id}>
                     <td className="px-6 py-3 text-sm text-slate-600">{c.userEmail}</td>
                     <td className="px-6 py-3 text-sm text-slate-900">
-                      {c.amountUsd} USD
+                      <div className="font-semibold text-slate-900">{c.amountUsd} USD</div>
+                      <div className="text-xs text-slate-500">
+                        {c.amountHtg ? `${c.amountHtg} HTG` : "0 HTG"}
+                      </div>
                     </td>
                     <td className="px-6 py-3 text-sm text-slate-600">
                       {c.cryptoType} ({c.network})
+                      <div className="text-xs text-slate-500 mt-0.5">
+                        {c.paymentMethod
+                          ? `Paiement: ${c.paymentMethod}`
+                          : c.receptionPlatform
+                            ? `Réception: ${c.receptionPlatform}`
+                            : ""}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        Preuve: {c.paymentProof ? "✅" : "—"}
+                      </div>
                     </td>
                     <td className="px-6 py-3 text-sm">
                       <span className="inline-flex px-2 py-0.5 rounded-full border text-xs bg-slate-100 text-slate-700 border-slate-200">

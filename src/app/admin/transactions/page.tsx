@@ -203,6 +203,7 @@ function TransactionsContent() {
               <option value="all">Toutes les méthodes</option>
               <option value="MonCash">MonCash</option>
               <option value="NatCash">NatCash</option>
+              <option value="Meru">Meru</option>
               <option value="Binance">Binance</option>
               <option value="Crypto">Crypto</option>
               <option value="Zelle">Zelle</option>

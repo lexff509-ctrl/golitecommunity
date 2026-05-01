@@ -2,20 +2,31 @@
 
 import { useState } from "react";
 import { apiFetch } from "@/lib/api-client";
-import { PAYMENT_METHODS, RECEPTION_PLATFORMS } from "@/lib/constants";
+import { PAYMENT_METHODS, RECEPTION_PLATFORMS, MERU_INFO } from "@/lib/constants";
 
-const BUY_RATE = 136;
-const SELL_RATE = 150;
+const BUY_RATE = 150; // user buys crypto: USD -> HTG to pay
+const SELL_RATE = 136; // user sells crypto: USD -> HTG to receive (after fees)
+
+const WALLETS = {
+  BEP20: "0xd255fe93d2b70b0934faca0e4268156f85cf2997",
+  TRC20: "TPYgjvcLB5Jps5zEmMPgRK8xHXip5iVuyJ",
+  ERC20: "0xd255fe93d2b70b0934faca0e4268156f85cf2997",
+} as const;
 
 export default function CryptoPage() {
   const [mode, setMode] = useState<"buy" | "sell">("buy");
-  const [amountHtg, setAmountHtg] = useState("");
+  const [amountUsd, setAmountUsd] = useState("");
+
+  // Buy: choose crypto + your receiving wallet
   const [cryptoType, setCryptoType] = useState("USDT");
-  const [network, setNetwork] = useState("TRC20");
-  const [walletAddress, setWalletAddress] = useState("");
+  const [network, setNetwork] = useState<keyof typeof WALLETS>("TRC20");
+  const [walletAddress, setWalletAddress] = useState(""); // user's wallet to receive crypto
+
   const [paymentMethod, setPaymentMethod] = useState("MonCash");
   const [paymentProof, setPaymentProof] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  // Sell: choose how you receive, and send crypto to platform wallet + upload proof
   const [receptionPlatform, setReceptionPlatform] = useState("");
   const [receptionName, setReceptionName] = useState("");
   const [receptionEmail, setReceptionEmail] = useState("");
@@ -26,9 +37,20 @@ export default function CryptoPage() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
-  const amount = Number(amountHtg || 0);
-  const rate = mode === "buy" ? BUY_RATE : SELL_RATE;
-  const usd = amount > 0 ? amount / rate : 0;
+  const amount = Number(amountUsd || 0);
+  const buyPayHtg = amount > 0 ? amount * BUY_RATE : 0;
+
+  const sellFeeFixedUsd = 5;
+  const sellFeePct = 0.02;
+  const sellAfterFixed = Math.max(0, amount - sellFeeFixedUsd);
+  const sellFeePctUsd = sellAfterFixed * sellFeePct;
+  const sellNetUsd = Math.max(0, sellAfterFixed - sellFeePctUsd);
+
+  const sellFinalCurrency = receptionPlatform === "Zelle" ? "USD" : "HTG";
+  const sellFinalAmount =
+    sellFinalCurrency === "USD" ? sellNetUsd : sellNetUsd * SELL_RATE;
+
+  const destinationWallet = WALLETS[network];
 
   const uploadProof = async (file: File) => {
     setUploading(true);
@@ -53,6 +75,9 @@ export default function CryptoPage() {
     if (receptionPlatform === "Zelle") {
       details.name = receptionName;
       details.email = receptionEmail;
+    } else if (receptionPlatform === "Meru") {
+      details.name = receptionName;
+      details.phone = receptionPhone;
     } else if (receptionPlatform === "MonCash" || receptionPlatform === "NatCash") {
       details.name = receptionName;
       details.phone = receptionPhone;
@@ -73,12 +98,12 @@ export default function CryptoPage() {
     try {
       const body = {
         mode,
-        amountHtg: amount,
+        amountUsd: amount,
         cryptoType,
-        network,
-        walletAddress,
+        network: mode === "sell" ? network : network,
+        walletAddress: mode === "buy" ? walletAddress : destinationWallet,
         paymentMethod: mode === "buy" ? paymentMethod : null,
-        paymentProof: mode === "buy" ? paymentProof : null,
+        paymentProof,
         receptionPlatform: mode === "sell" ? receptionPlatform : null,
         receptionDetails: mode === "sell" ? buildReceptionDetails() : null,
       };
@@ -94,7 +119,7 @@ export default function CryptoPage() {
           ? "Demande d'achat envoyée. L'admin va vérifier la preuve et traiter l'envoi."
           : "Demande de vente envoyée. L'admin va examiner et confirmer le paiement."
       );
-      setAmountHtg("");
+      setAmountUsd("");
       setWalletAddress("");
       setPaymentProof("");
     } catch (e) {
@@ -107,9 +132,7 @@ export default function CryptoPage() {
     <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
       <div>
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">🪙 Crypto Achat / Vente</h1>
-        <p className="text-slate-500 mt-1">
-          Achat à {BUY_RATE} HTG/USD, vente à {SELL_RATE} HTG/USD.
-        </p>
+        <p className="text-slate-500 mt-1">Achat: 1 USD = {BUY_RATE} HTG. Vente: 1 USD = {SELL_RATE} HTG + frais.</p>
       </div>
 
       <div className="flex gap-2">
@@ -122,7 +145,10 @@ export default function CryptoPage() {
           Achat
         </button>
         <button
-          onClick={() => setMode("sell")}
+          onClick={() => {
+            setMode("sell");
+            setCryptoType("USDT");
+          }}
           className={`px-4 py-2 rounded-xl text-sm font-semibold ${
             mode === "sell" ? "bg-blue-500 text-white" : "bg-white border border-slate-200 text-slate-700"
           }`}
@@ -136,13 +162,26 @@ export default function CryptoPage() {
           <input
             type="number"
             min="1"
-            value={amountHtg}
-            onChange={(e) => setAmountHtg(e.target.value)}
-            placeholder="Montant HTG"
+            step="0.01"
+            value={amountUsd}
+            onChange={(e) => setAmountUsd(e.target.value)}
+            placeholder="Montant en USD"
             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
           />
           <div className="px-3 py-2 rounded-xl border border-slate-200 bg-slate-50 text-sm">
-            Equivalent USD: <span className="font-semibold">{usd.toFixed(2)} USD</span>
+            {mode === "buy" ? (
+              <>
+                À payer:{" "}
+                <span className="font-semibold">
+                  {buyPayHtg.toLocaleString("fr-FR")} HTG
+                </span>
+              </>
+            ) : (
+              <>
+                Net après frais:{" "}
+                <span className="font-semibold">{sellNetUsd.toFixed(2)} USD</span>
+              </>
+            )}
           </div>
         </div>
 
@@ -153,20 +192,18 @@ export default function CryptoPage() {
             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
           >
             <option value="USDT">USDT</option>
-            <option value="USDC">USDC</option>
-            <option value="BTC">BTC</option>
-            <option value="ETH">ETH</option>
+            {mode === "buy" && <option value="BTC">BTC</option>}
+            {mode === "buy" && <option value="TRX">TRX</option>}
+            {mode === "buy" && <option value="BNB">BNB</option>}
           </select>
           <select
             value={network}
-            onChange={(e) => setNetwork(e.target.value)}
+            onChange={(e) => setNetwork(e.target.value as keyof typeof WALLETS)}
             className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
           >
             <option value="TRC20">TRC20</option>
             <option value="ERC20">ERC20</option>
             <option value="BEP20">BEP20</option>
-            <option value="BTC">BTC</option>
-            <option value="SOL">SOL</option>
           </select>
         </div>
 
@@ -174,7 +211,7 @@ export default function CryptoPage() {
           type="text"
           value={walletAddress}
           onChange={(e) => setWalletAddress(e.target.value)}
-          placeholder={mode === "buy" ? "Votre wallet pour recevoir crypto" : "Wallet source (optionnel recommandé)"}
+          placeholder={mode === "buy" ? "Votre wallet pour recevoir la crypto (obligatoire)" : "Votre wallet source (optionnel)"}
           className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
         />
 
@@ -205,11 +242,42 @@ export default function CryptoPage() {
               {uploading && <p className="text-xs text-slate-500">Upload...</p>}
               {paymentProof && <p className="text-xs text-green-600">Preuve uploadée ✅</p>}
             </div>
+
+            {paymentMethod === "Meru" && (
+              <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-sm">
+                <p className="font-semibold text-slate-800">MERU</p>
+                <p className="text-slate-600">Tag: <span className="font-mono font-semibold">{MERU_INFO.tag}</span></p>
+                <p className="text-slate-600">Numéro: <span className="font-mono font-semibold">{MERU_INFO.phone}</span></p>
+              </div>
+            )}
           </>
         )}
 
         {mode === "sell" && (
           <div className="space-y-3 p-3 rounded-xl bg-slate-50 border border-slate-200">
+            <div className="p-3 rounded-xl border border-slate-200 bg-white">
+              <p className="text-sm font-semibold text-slate-800 mb-1">Wallet crypto (envoyer)</p>
+              <p className="text-xs text-slate-500 mb-2">
+                Envoyez <span className="font-semibold">{cryptoType}</span> via <span className="font-semibold">{network}</span> à l&apos;adresse ci-dessous, puis uploadez la preuve.
+              </p>
+              <p className="text-xs text-slate-500">Adresse ({network})</p>
+              <p className="font-mono text-sm font-semibold text-slate-900 break-all">{destinationWallet}</p>
+            </div>
+
+            <div className="space-y-2">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) void uploadProof(file);
+                }}
+                className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700"
+              />
+              {uploading && <p className="text-xs text-slate-500">Upload...</p>}
+              {paymentProof && <p className="text-xs text-green-600">Preuve uploadée ✅</p>}
+            </div>
+
             <p className="text-sm font-semibold text-slate-800">Moyen pour recevoir votre paiement</p>
             <select
               value={receptionPlatform}
@@ -243,7 +311,7 @@ export default function CryptoPage() {
               </>
             )}
 
-            {(receptionPlatform === "MonCash" || receptionPlatform === "NatCash") && (
+            {(receptionPlatform === "MonCash" || receptionPlatform === "NatCash" || receptionPlatform === "Meru") && (
               <>
                 <input
                   type="text"
@@ -284,6 +352,42 @@ export default function CryptoPage() {
                 />
               </>
             )}
+          </div>
+        )}
+
+        {mode === "sell" && amount > 0 && (
+          <div className="p-4 rounded-xl border border-slate-200 bg-white">
+            <p className="text-sm font-semibold text-slate-900 mb-2">📌 Détails du calcul</p>
+            <div className="grid sm:grid-cols-2 gap-3 text-sm">
+              <div className="flex justify-between">
+                <span className="text-slate-500">Montant envoyé</span>
+                <span className="font-semibold text-slate-900">{amount.toFixed(2)} USD</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Frais</span>
+                <span className="font-semibold text-slate-900">
+                  {sellFeeFixedUsd.toFixed(2)} USD + {(sellFeePct * 100).toFixed(0)}% ({sellFeePctUsd.toFixed(2)} USD)
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Montant reçu (net)</span>
+                <span className="font-semibold text-slate-900">
+                  {sellNetUsd.toFixed(2)} USD
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-500">Devise finale</span>
+                <span className="font-semibold text-slate-900">{sellFinalCurrency}</span>
+              </div>
+              <div className="sm:col-span-2 flex justify-between">
+                <span className="text-slate-500">Montant final</span>
+                <span className="font-bold text-slate-900">
+                  {sellFinalCurrency === "USD"
+                    ? `${sellFinalAmount.toFixed(2)} USD`
+                    : `${sellFinalAmount.toLocaleString("fr-FR")} HTG`}
+                </span>
+              </div>
+            </div>
           </div>
         )}
 

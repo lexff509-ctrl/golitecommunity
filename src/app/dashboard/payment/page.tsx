@@ -12,6 +12,7 @@ import {
   EXCHANGE_RATE,
   BINANCE_INFO,
   MONCASH_INFO,
+  MERU_INFO,
   CAM_TRANSFER_INFO,
   DEFAULT_TRC20_WALLET,
 } from "@/lib/constants";
@@ -72,7 +73,10 @@ export default function NewPaymentPage() {
 
   const amountNum = parseFloat(form.amountUSD) || 0;
   const needsConversion =
-    form.method === "MonCash" || form.method === "NatCash" || form.method === "CamTransfer";
+    form.method === "MonCash" ||
+    form.method === "NatCash" ||
+    form.method === "Meru" ||
+    form.method === "CamTransfer";
   const convertedAmount = needsConversion ? amountNum * EXCHANGE_RATE : 0;
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -495,6 +499,25 @@ export default function NewPaymentPage() {
                     </p>
                   </div>
                 )}
+                {form.method === "Meru" && (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between p-2 bg-white rounded-lg">
+                      <span className="text-slate-500">Tag :</span>
+                      <span className="font-mono font-bold text-slate-900">
+                        {MERU_INFO.tag}
+                      </span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-white rounded-lg">
+                      <span className="text-slate-500">Numéro :</span>
+                      <span className="font-mono font-bold text-slate-900">
+                        {MERU_INFO.phone}
+                      </span>
+                    </div>
+                    <p className="text-amber-600 text-xs font-medium">
+                      ⚠️ Envoyez exactement le montant indiqué. Conservez la preuve de transaction.
+                    </p>
+                  </div>
+                )}
                 {form.method === "CamTransfer" && (
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between p-2 bg-white rounded-lg">
@@ -684,7 +707,9 @@ export default function NewPaymentPage() {
               </div>
             )}
 
-            {(form.receptionPlatform === "MonCash" || form.receptionPlatform === "NatCash") && (
+            {(form.receptionPlatform === "MonCash" ||
+              form.receptionPlatform === "NatCash" ||
+              form.receptionPlatform === "Meru") && (
               <div className="space-y-4 animate-fade-in">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1.5">Nom *</label>

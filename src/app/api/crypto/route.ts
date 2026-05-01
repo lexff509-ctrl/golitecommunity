@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const {
       mode,
-      amountHtg,
+      amountUsd,
       cryptoType,
       network,
       walletAddress,
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     const normalizedMode = mode === "sell" ? "sell" : "buy";
 
     // Validate required fields
-    if (!amountHtg || !cryptoType || !network) {
+    if (!amountUsd || !cryptoType || !network) {
       return NextResponse.json(
         { error: "Champs obligatoires manquants" },
         { status: 400 }
@@ -97,27 +97,41 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    if (normalizedMode === "sell" && !receptionPlatform) {
+    if (normalizedMode === "sell" && (!receptionPlatform || !paymentProof || !walletAddress)) {
       return NextResponse.json(
-        { error: "Pour vente crypto: la méthode de réception est obligatoire" },
+        {
+          error:
+            "Pour vente crypto: wallet de destination, preuve de transaction et méthode de réception sont obligatoires",
+        },
         { status: 400 }
       );
     }
 
-    const amountHtgNum = Number(amountHtg);
-    if (isNaN(amountHtgNum) || amountHtgNum <= 0) {
+    const amountUsdNum = Number(amountUsd);
+    if (isNaN(amountUsdNum) || amountUsdNum <= 0) {
       return NextResponse.json(
-        { error: "Montant HTG invalide" },
+        { error: "Montant USD invalide" },
         { status: 400 }
       );
     }
 
     const rate = normalizedMode === "buy" ? CRYPTO_BUY_RATE : CRYPTO_SELL_RATE;
-    const amountUsd = amountHtgNum / rate;
+    const sellFeeFixedUsd = 5;
+    const sellFeePct = 0.02;
+
+    const amountHtgNum =
+      normalizedMode === "buy"
+        ? amountUsdNum * CRYPTO_BUY_RATE
+        : (() => {
+            const afterFixed = Math.max(0, amountUsdNum - sellFeeFixedUsd);
+            const netUsd = Math.max(0, afterFixed - afterFixed * sellFeePct);
+            if (receptionPlatform === "Zelle") return 0;
+            return netUsd * CRYPTO_SELL_RATE;
+          })();
 
     // Validate crypto type and network
-    const validCryptoTypes = ["USDT", "USDC", "BTC", "ETH"];
-    const validNetworks = ["TRC20", "ERC20", "BEP20", "BTC", "SOL"];
+    const validCryptoTypes = ["USDT", "BTC", "TRX", "BNB"];
+    const validNetworks = ["TRC20", "ERC20", "BEP20"];
 
     if (!validCryptoTypes.includes(cryptoType)) {
       return NextResponse.json(
@@ -133,16 +147,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-        // Create crypto transaction
+    // Create crypto transaction
     const newCrypto = await db.insert(cryptoTransactions).values({
       user_id: session.id,
       amount_htg: amountHtgNum.toString(),
-      amount_usd: amountUsd.toString(),
+      amount_usd: amountUsdNum.toString(),
       crypto_type: cryptoType,
       network: network,
       wallet_address:
-        walletAddress ||
-        `reception-${String(receptionPlatform || "unknown").toLowerCase()}`,
+        walletAddress,
       status: "pending",
     }).returning();
 

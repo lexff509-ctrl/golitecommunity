@@ -3,8 +3,8 @@ import { settings } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
 
 export const CRYPTO_META_KEY_PREFIX = "crypto_meta:";
-export const CRYPTO_BUY_RATE = 136;
-export const CRYPTO_SELL_RATE = 150;
+export const CRYPTO_BUY_RATE = 150;
+export const CRYPTO_SELL_RATE = 136;
 
 export type CryptoMeta = {
   mode: "buy" | "sell";

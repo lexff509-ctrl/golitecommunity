@@ -1,6 +1,7 @@
 export const PAYMENT_METHODS = [
   { id: "MonCash", label: "MonCash", available: true },
   { id: "NatCash", label: "NatCash", available: false },
+  { id: "Meru", label: "Meru", available: true },
   { id: "CamTransfer", label: "CAM Transfer", available: true },
   { id: "Binance", label: "Binance", available: true },
   { id: "Crypto", label: "Crypto", available: true },
@@ -11,6 +12,7 @@ export const RECEPTION_PLATFORMS = [
   "Zelle",
   "MonCash",
   "NatCash",
+  "Meru",
   "Crypto",
   "Binance",
 ] as const;
@@ -25,6 +27,11 @@ export const BINANCE_INFO = {
 export const MONCASH_INFO = {
   name: "Joseph Renato",
   phone: "+50931959375",
+};
+
+export const MERU_INFO = {
+  tag: "$golitecommunity",
+  phone: "+50946074865",
 };
 
 export const CAM_TRANSFER_INFO = {
