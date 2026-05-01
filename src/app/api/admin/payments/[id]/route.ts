@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { payments, notifications, adminLogs, users, settings } from "@/db/schema";
+import { payments, notifications, adminLogs, users } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { eq } from "drizzle-orm";
+import { getReceptionMethodsForPayment } from "@/lib/reception-methods";
 
 export const dynamic = "force-dynamic";
-const RECEPTION_KEY_PREFIX = "payment_reception:";
 
 function toIso(value: unknown): string | null {
   if (!value) return null;
@@ -114,27 +114,11 @@ export async function GET(
       );
     }
     const mapped = mapPayment(result[0]);
-    const reception = await db
-      .select({
-        value: settings.value,
-      })
-      .from(settings)
-      .where(eq(settings.key, `${RECEPTION_KEY_PREFIX}${id}`))
-      .limit(1);
-    if (reception.length > 0) {
-      try {
-        const parsed = JSON.parse(reception[0].value) as {
-          receptionPlatform?: string | null;
-          receptionDetails?: Record<string, string> | null;
-        };
-        mapped.receptionPlatform = parsed?.receptionPlatform ?? null;
-        mapped.receptionDetails = parsed?.receptionDetails ?? null;
-      } catch {
-        // keep null values when malformed
-      }
-    }
+    const receptionMethods = await getReceptionMethodsForPayment(id);
+    mapped.receptionPlatform = receptionMethods[0]?.platform ?? null;
+    mapped.receptionDetails = receptionMethods[0]?.details ?? null;
 
-    return NextResponse.json({ payment: mapped });
+    return NextResponse.json({ payment: { ...mapped, receptionMethods } });
   } catch (error: unknown) {
     const message =
       error instanceof Error ? error.message : "Erreur inconnue";
@@ -275,31 +259,17 @@ export async function PATCH(
       .limit(1);
 
     const mapped = updated ? mapPayment(updated) : null;
+    const receptionMethods = mapped
+      ? await getReceptionMethodsForPayment(id)
+      : [];
     if (mapped) {
-      const reception = await db
-        .select({
-          value: settings.value,
-        })
-        .from(settings)
-        .where(eq(settings.key, `${RECEPTION_KEY_PREFIX}${id}`))
-        .limit(1);
-      if (reception.length > 0) {
-        try {
-          const parsed = JSON.parse(reception[0].value) as {
-            receptionPlatform?: string | null;
-            receptionDetails?: Record<string, string> | null;
-          };
-          mapped.receptionPlatform = parsed?.receptionPlatform ?? null;
-          mapped.receptionDetails = parsed?.receptionDetails ?? null;
-        } catch {
-          // keep null values when malformed
-        }
-      }
+      mapped.receptionPlatform = receptionMethods[0]?.platform ?? null;
+      mapped.receptionDetails = receptionMethods[0]?.details ?? null;
     }
 
     return NextResponse.json({
       message: "Statut mis à jour avec succès",
-      payment: mapped,
+      payment: mapped ? { ...mapped, receptionMethods } : null,
     });
   } catch (error: unknown) {
     const message =

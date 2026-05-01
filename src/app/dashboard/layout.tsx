@@ -9,6 +9,7 @@ const NAV_ITEMS = [
   { href: "/dashboard", label: "Tableau de bord", icon: "📊" },
   { href: "/dashboard/onboarding", label: "Start Here", icon: "🚀" },
   { href: "/dashboard/invest", label: "Comment investir", icon: "📖" },
+  { href: "/dashboard/crypto", label: "Crypto Achat/Vente", icon: "🪙" },
   { href: "/dashboard/payment", label: "Nouveau paiement", icon: "💰" },
   { href: "/dashboard/history", label: "Historique", icon: "📋" },
   { href: "/dashboard/faq", label: "FAQ", icon: "❓" },

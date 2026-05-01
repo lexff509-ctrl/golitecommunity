@@ -3,10 +3,14 @@ import { db } from "@/db";
 import { cryptoTransactions } from "@/db/schema";
 import { desc, eq } from "drizzle-orm";
 import { getSessionUser } from "@/lib/auth";
+import {
+  CRYPTO_BUY_RATE,
+  CRYPTO_SELL_RATE,
+  getCryptoMetaMap,
+  saveCryptoMeta,
+} from "@/lib/crypto-meta";
 
 export const dynamic = "force-dynamic";
-
-const EXCHANGE_RATE = 150; // 1 USD = 150 HTG
 
 // GET /api/crypto - List user's crypto transactions
 export async function GET(req: NextRequest) {
@@ -31,7 +35,21 @@ export async function GET(req: NextRequest) {
       .where(eq(cryptoTransactions.user_id, session.id))
       .orderBy(desc(cryptoTransactions.created_at));
 
-    return NextResponse.json(userCrypto);
+    const metaMap = await getCryptoMetaMap(userCrypto.map((c) => c.id));
+
+    return NextResponse.json(
+      userCrypto.map((txn) => ({
+        ...txn,
+        amountHtg: String(txn.amountHtg ?? "0"),
+        amountUsd: String(txn.amountUsd ?? "0"),
+        mode: metaMap[txn.id]?.mode ?? "buy",
+        paymentMethod: metaMap[txn.id]?.paymentMethod ?? null,
+        paymentProof: metaMap[txn.id]?.paymentProof ?? null,
+        receptionPlatform: metaMap[txn.id]?.receptionPlatform ?? null,
+        receptionDetails: metaMap[txn.id]?.receptionDetails ?? null,
+        rate: metaMap[txn.id]?.rate ?? CRYPTO_BUY_RATE,
+      }))
+    );
   } catch (error) {
     console.error("Error fetching crypto transactions:", error);
     return NextResponse.json(
@@ -50,12 +68,38 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { amountHtg, cryptoType, network, walletAddress } = body;
+    const {
+      mode,
+      amountHtg,
+      cryptoType,
+      network,
+      walletAddress,
+      paymentMethod,
+      paymentProof,
+      receptionPlatform,
+      receptionDetails,
+    } = body;
+    const normalizedMode = mode === "sell" ? "sell" : "buy";
 
     // Validate required fields
-    if (!amountHtg || !cryptoType || !network || !walletAddress) {
+    if (!amountHtg || !cryptoType || !network) {
       return NextResponse.json(
         { error: "Champs obligatoires manquants" },
+        { status: 400 }
+      );
+    }
+    if (normalizedMode === "buy" && (!walletAddress || !paymentMethod || !paymentProof)) {
+      return NextResponse.json(
+        {
+          error:
+            "Pour achat crypto: wallet, méthode de paiement et preuve sont obligatoires",
+        },
+        { status: 400 }
+      );
+    }
+    if (normalizedMode === "sell" && !receptionPlatform) {
+      return NextResponse.json(
+        { error: "Pour vente crypto: la méthode de réception est obligatoire" },
         { status: 400 }
       );
     }
@@ -68,12 +112,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Convert HTG to USD
-    const amountUsd = amountHtgNum / EXCHANGE_RATE;
+    const rate = normalizedMode === "buy" ? CRYPTO_BUY_RATE : CRYPTO_SELL_RATE;
+    const amountUsd = amountHtgNum / rate;
 
     // Validate crypto type and network
-    const validCryptoTypes = ["USDT", "USDC"];
-    const validNetworks = ["TRC20", "ERC20", "BEP20"];
+    const validCryptoTypes = ["USDT", "USDC", "BTC", "ETH"];
+    const validNetworks = ["TRC20", "ERC20", "BEP20", "BTC", "SOL"];
 
     if (!validCryptoTypes.includes(cryptoType)) {
       return NextResponse.json(
@@ -96,12 +140,32 @@ export async function POST(req: NextRequest) {
       amount_usd: amountUsd.toString(),
       crypto_type: cryptoType,
       network: network,
-      wallet_address: walletAddress,
+      wallet_address:
+        walletAddress ||
+        `reception-${String(receptionPlatform || "unknown").toLowerCase()}`,
       status: "pending",
     }).returning();
 
+    await saveCryptoMeta(newCrypto[0].id, {
+      mode: normalizedMode,
+      paymentMethod: paymentMethod || null,
+      paymentProof: paymentProof || null,
+      receptionPlatform: receptionPlatform || null,
+      receptionDetails: (receptionDetails || null) as Record<string, string> | null,
+      rate,
+      createdAt: new Date().toISOString(),
+    });
+
     return NextResponse.json({
-      cryptoTransaction: newCrypto[0],
+      cryptoTransaction: {
+        ...newCrypto[0],
+        mode: normalizedMode,
+        paymentMethod: paymentMethod || null,
+        paymentProof: paymentProof || null,
+        receptionPlatform: receptionPlatform || null,
+        receptionDetails: receptionDetails || null,
+        rate,
+      },
       message: "Transaction crypto créée avec succès"
     }, { status: 201 });
 

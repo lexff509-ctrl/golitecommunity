@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { apiFetch } from "@/lib/api-client";
+import { RECEPTION_PLATFORMS } from "@/lib/constants";
 
 type Payment = {
   id: string;
@@ -21,6 +22,13 @@ type Payment = {
   validatedAt: string | null;
   paidAt: string | null;
   rejectedAt: string | null;
+  receptionDetails: Record<string, string> | null;
+  receptionMethods?: Array<{
+    id: string;
+    platform: string;
+    details: Record<string, string>;
+    createdAt: string;
+  }>;
 };
 
 const STATUS_MAP: Record<
@@ -61,20 +69,92 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [editingPaymentId, setEditingPaymentId] = useState<string | null>(null);
+  const [savingReception, setSavingReception] = useState(false);
+  const [receptionPlatform, setReceptionPlatform] = useState("");
+  const [receptionName, setReceptionName] = useState("");
+  const [receptionEmail, setReceptionEmail] = useState("");
+  const [receptionPhone, setReceptionPhone] = useState("");
+  const [receptionNetwork, setReceptionNetwork] = useState("");
+  const [receptionWallet, setReceptionWallet] = useState("");
+
+  const fetchPayments = async () => {
+    try {
+      const res = await apiFetch("/api/payments");
+      const data = await res.json();
+      setPayments(data.payments || []);
+    } catch {
+      // silent
+    }
+    setLoading(false);
+  };
 
   useEffect(() => {
-    const fetchPayments = async () => {
-      try {
-        const res = await apiFetch("/api/payments");
-        const data = await res.json();
-        setPayments(data.payments || []);
-      } catch {
-        // silent
-      }
-      setLoading(false);
-    };
-    fetchPayments();
+    queueMicrotask(() => {
+      void fetchPayments();
+    });
   }, []);
+
+  const resetReceptionForm = () => {
+    setReceptionPlatform("");
+    setReceptionName("");
+    setReceptionEmail("");
+    setReceptionPhone("");
+    setReceptionNetwork("");
+    setReceptionWallet("");
+  };
+
+  const openReceptionModal = (paymentId: string) => {
+    setEditingPaymentId(paymentId);
+    resetReceptionForm();
+  };
+
+  const buildReceptionDetails = () => {
+    const details: Record<string, string> = {};
+    if (receptionPlatform === "Zelle") {
+      details.name = receptionName;
+      details.email = receptionEmail;
+    } else if (
+      receptionPlatform === "MonCash" ||
+      receptionPlatform === "NatCash"
+    ) {
+      details.name = receptionName;
+      details.phone = receptionPhone;
+    } else if (receptionPlatform === "Crypto") {
+      details.network = receptionNetwork;
+      details.wallet = receptionWallet;
+    } else if (receptionPlatform === "Binance") {
+      details.idOrEmail = receptionEmail;
+      details.name = receptionName;
+    }
+    return details;
+  };
+
+  const saveReceptionMethod = async () => {
+    if (!editingPaymentId || !receptionPlatform) return;
+    setSavingReception(true);
+    try {
+      const res = await apiFetch(`/api/payments/${editingPaymentId}/receptions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          receptionPlatform,
+          receptionDetails: buildReceptionDetails(),
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        alert(data.error || "Impossible d'ajouter le moyen de réception");
+      } else {
+        await fetchPayments();
+        setEditingPaymentId(null);
+        resetReceptionForm();
+      }
+    } catch {
+      alert("Erreur de connexion");
+    }
+    setSavingReception(false);
+  };
 
   const filtered =
     filter === "all"
@@ -232,6 +312,52 @@ export default function HistoryPage() {
                       </div>
                     </div>
 
+                    <div className="mt-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-slate-400 text-sm">
+                          Moyens de réception
+                        </p>
+                        {p.status !== "rejected" && (
+                          <button
+                            onClick={() => openReceptionModal(p.id)}
+                            className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
+                          >
+                            + Ajouter
+                          </button>
+                        )}
+                      </div>
+                      {(p.receptionMethods && p.receptionMethods.length > 0) ? (
+                        <div className="space-y-2">
+                          {p.receptionMethods.map((method) => (
+                            <div
+                              key={method.id}
+                              className="p-3 rounded-xl border border-slate-200 bg-slate-50"
+                            >
+                              <p className="text-sm font-semibold text-slate-900">
+                                {method.platform}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {formatSafeDate(method.createdAt, true)}
+                              </p>
+                              {Object.keys(method.details || {}).length > 0 && (
+                                <div className="mt-1 text-xs text-slate-600">
+                                  {Object.entries(method.details).map(([k, v]) => (
+                                    <p key={k}>
+                                      <span className="capitalize">{k}</span>: {v}
+                                    </p>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-slate-500">
+                          Aucun moyen de réception ajouté.
+                        </p>
+                      )}
+                    </div>
+
                     {p.paymentProof && (
                       <div className="mt-4">
                         <p className="text-slate-400 text-sm mb-2">
@@ -285,6 +411,134 @@ export default function HistoryPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {editingPaymentId && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setEditingPaymentId(null)}
+          />
+          <div className="relative bg-white rounded-2xl shadow-xl p-6 max-w-lg w-full">
+            <h3 className="text-lg font-bold text-slate-900 mb-2">
+              Ajouter un moyen de réception
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Vous pouvez ajouter plusieurs moyens, même après validation ou paiement.
+            </p>
+
+            <div className="space-y-3">
+              <select
+                value={receptionPlatform}
+                onChange={(e) => setReceptionPlatform(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+              >
+                <option value="">Choisir une plateforme</option>
+                {RECEPTION_PLATFORMS.map((platform) => (
+                  <option key={platform} value={platform}>
+                    {platform}
+                  </option>
+                ))}
+              </select>
+
+              {receptionPlatform === "Zelle" && (
+                <>
+                  <input
+                    type="text"
+                    value={receptionName}
+                    onChange={(e) => setReceptionName(e.target.value)}
+                    placeholder="Nom complet"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={receptionEmail}
+                    onChange={(e) => setReceptionEmail(e.target.value)}
+                    placeholder="Email ou numéro Zelle"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </>
+              )}
+
+              {(receptionPlatform === "MonCash" || receptionPlatform === "NatCash") && (
+                <>
+                  <input
+                    type="text"
+                    value={receptionName}
+                    onChange={(e) => setReceptionName(e.target.value)}
+                    placeholder="Nom complet"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={receptionPhone}
+                    onChange={(e) => setReceptionPhone(e.target.value)}
+                    placeholder="Numéro téléphone"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </>
+              )}
+
+              {receptionPlatform === "Crypto" && (
+                <>
+                  <select
+                    value={receptionNetwork}
+                    onChange={(e) => setReceptionNetwork(e.target.value)}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  >
+                    <option value="">Choisir un réseau</option>
+                    <option value="TRC20">TRC20</option>
+                    <option value="ERC20">ERC20</option>
+                    <option value="BEP20">BEP20</option>
+                    <option value="SPL">SPL</option>
+                  </select>
+                  <input
+                    type="text"
+                    value={receptionWallet}
+                    onChange={(e) => setReceptionWallet(e.target.value)}
+                    placeholder="Adresse wallet"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </>
+              )}
+
+              {receptionPlatform === "Binance" && (
+                <>
+                  <input
+                    type="text"
+                    value={receptionEmail}
+                    onChange={(e) => setReceptionEmail(e.target.value)}
+                    placeholder="ID ou email Binance"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={receptionName}
+                    onChange={(e) => setReceptionName(e.target.value)}
+                    placeholder="Nom (optionnel)"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm"
+                  />
+                </>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-3 mt-5">
+              <button
+                onClick={() => setEditingPaymentId(null)}
+                className="px-4 py-2 rounded-xl text-sm bg-slate-100 text-slate-700"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={saveReceptionMethod}
+                disabled={!receptionPlatform || savingReception}
+                className="px-4 py-2 rounded-xl text-sm font-semibold bg-blue-500 text-white disabled:opacity-50"
+              >
+                {savingReception ? "Enregistrement..." : "Enregistrer"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

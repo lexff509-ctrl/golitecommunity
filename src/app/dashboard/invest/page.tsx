@@ -233,7 +233,7 @@ export default function InvestGuidePage() {
           Processus: paiement → upload preuve image → validation admin → traitement.
         </p>
         <Link
-          href="/dashboard/payment"
+          href="/dashboard/crypto"
           className="inline-block px-6 py-2.5 text-sm font-semibold text-white bg-gradient-to-r from-green-500 to-blue-600 rounded-xl hover:opacity-90"
         >
           Acheter crypto maintenant

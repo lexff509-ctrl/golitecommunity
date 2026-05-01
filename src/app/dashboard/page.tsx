@@ -90,7 +90,7 @@ export default function DashboardPage() {
           { href: "/dashboard/onboarding", label: "🚀 Start Here", desc: "Onboarding" },
           { href: config?.config?.pocket_option_link || "#", label: "📈 Pocket Option", desc: "Trading", external: true },
           { href: "/dashboard/payment", label: "💰 Paiement", desc: "Envoyer" },
-          { href: "/dashboard/invest", label: "🪙 Crypto", desc: "Achat/Vente" },
+          { href: "/dashboard/crypto", label: "🪙 Crypto", desc: "Achat/Vente" },
           { href: "/dashboard/faq", label: "❓ FAQ", desc: "Aide" },
         ].map((link, i) =>
           link.external ? (
@@ -205,7 +205,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 stagger-children">
         <Link
-          href="/dashboard/invest"
+          href="/dashboard/crypto"
           className="bg-white border border-slate-200 rounded-2xl p-6 card-hover group"
         >
           <div className="text-3xl mb-3 group-hover:scale-110 transition-transform">

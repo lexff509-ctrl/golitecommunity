@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { cryptoTransactions, users, adminLogs } from "@/db/schema";
 import { requireAdmin } from "@/lib/auth";
 import { eq, desc, sql } from "drizzle-orm";
+import { getCryptoMetaMap } from "@/lib/crypto-meta";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,8 @@ export async function GET(req: NextRequest) {
       .limit(limit)
       .offset(offset);
 
+    const metaMap = await getCryptoMetaMap(result.map((item) => item.id));
+
     // Get stats
     const [stats] = await db
       .select({
@@ -56,7 +59,17 @@ export async function GET(req: NextRequest) {
       .from(cryptoTransactions);
 
     return NextResponse.json({
-      cryptoTransactions: result,
+      cryptoTransactions: result.map((item) => ({
+        ...item,
+        amountHtg: String(item.amountHtg ?? "0"),
+        amountUsd: String(item.amountUsd ?? "0"),
+        mode: metaMap[item.id]?.mode ?? "buy",
+        paymentMethod: metaMap[item.id]?.paymentMethod ?? null,
+        paymentProof: metaMap[item.id]?.paymentProof ?? null,
+        receptionPlatform: metaMap[item.id]?.receptionPlatform ?? null,
+        receptionDetails: metaMap[item.id]?.receptionDetails ?? null,
+        rate: metaMap[item.id]?.rate ?? 150,
+      })),
       stats: {
         total: stats.total,
         pending: stats.pending,

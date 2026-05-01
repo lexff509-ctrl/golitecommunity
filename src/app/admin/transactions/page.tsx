@@ -27,6 +27,12 @@ type Payment = {
   paidAt: string | null;
   rejectedAt: string | null;
   userEmail: string;
+  receptionMethods?: Array<{
+    id: string;
+    platform: string;
+    details: Record<string, string>;
+    createdAt: string;
+  }>;
 };
 
 const STATUS_MAP: Record<
@@ -438,6 +444,35 @@ function TransactionsContent() {
                               </div>
                             )
                           )}
+                        </div>
+                      </div>
+                    )}
+
+                  {detailPayment.receptionMethods &&
+                    detailPayment.receptionMethods.length > 0 && (
+                      <div>
+                        <h3 className="text-sm font-bold text-slate-700 mb-2">
+                          📌 Tous les moyens de réception
+                        </h3>
+                        <div className="space-y-2">
+                          {detailPayment.receptionMethods.map((method) => (
+                            <div
+                              key={method.id}
+                              className="bg-slate-50 rounded-xl p-3 border border-slate-200"
+                            >
+                              <p className="text-sm font-semibold text-slate-900">
+                                {method.platform}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {new Date(method.createdAt).toLocaleString("fr-FR")}
+                              </p>
+                              {Object.entries(method.details || {}).map(([k, v]) => (
+                                <p key={k} className="text-xs text-slate-600">
+                                  <span className="capitalize">{k}</span>: {v}
+                                </p>
+                              ))}
+                            </div>
+                          ))}
                         </div>
                       </div>
                     )}

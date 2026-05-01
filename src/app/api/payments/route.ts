@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/db";
-import { payments, notifications, settings, users } from "@/db/schema";
+import { payments, notifications, users } from "@/db/schema";
 import { requireAuth } from "@/lib/auth";
-import { and, desc, eq, inArray, like } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
+import {
+  appendReceptionMethod,
+  getReceptionMethodsMap,
+} from "@/lib/reception-methods";
 
 export const dynamic = "force-dynamic";
-const RECEPTION_KEY_PREFIX = "payment_reception:";
 
 function toIso(value: unknown): string | null {
   if (!value) return null;
@@ -22,30 +25,6 @@ function generateTransactionId(): string {
   return id;
 }
 
-type ReceptionPayload = {
-  receptionPlatform: string | null;
-  receptionDetails: Record<string, string> | null;
-};
-
-function buildReceptionMap(
-  rows: Array<{ key: string; value: string }>
-): Record<string, ReceptionPayload> {
-  const map: Record<string, ReceptionPayload> = {};
-  for (const row of rows) {
-    const paymentId = row.key.replace(RECEPTION_KEY_PREFIX, "");
-    try {
-      const parsed = JSON.parse(row.value) as ReceptionPayload;
-      map[paymentId] = {
-        receptionPlatform: parsed?.receptionPlatform ?? null,
-        receptionDetails: parsed?.receptionDetails ?? null,
-      };
-    } catch {
-      map[paymentId] = { receptionPlatform: null, receptionDetails: null };
-    }
-  }
-  return map;
-}
-
 // GET - list client's payments
 export async function GET(req: NextRequest) {
   try {
@@ -57,14 +36,7 @@ export async function GET(req: NextRequest) {
       .where(eq(payments.user_id, user.id))
       .orderBy(desc(payments.created_at));
 
-    const receptionRows = await db
-      .select({
-        key: settings.key,
-        value: settings.value,
-      })
-      .from(settings)
-      .where(like(settings.key, `${RECEPTION_KEY_PREFIX}%`));
-    const receptionMap = buildReceptionMap(receptionRows);
+    const receptionMap = await getReceptionMethodsMap(result.map((p) => p.id));
 
     const normalizedPayments = result.map((payment) => ({
       id: payment.id,
@@ -90,8 +62,9 @@ export async function GET(req: NextRequest) {
       paidAt: null,
       rejectedAt: null,
       rejectionReason: null,
-      receptionPlatform: receptionMap[payment.id]?.receptionPlatform ?? null,
-      receptionDetails: receptionMap[payment.id]?.receptionDetails ?? null,
+      receptionPlatform: receptionMap[payment.id]?.[0]?.platform ?? null,
+      receptionDetails: receptionMap[payment.id]?.[0]?.details ?? null,
+      receptionMethods: receptionMap[payment.id] ?? [],
     }));
 
     return NextResponse.json({ payments: normalizedPayments });
@@ -189,23 +162,12 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    if (receptionPlatform || receptionDetails) {
-      const receptionValue = JSON.stringify({
-        receptionPlatform: receptionPlatform || null,
-        receptionDetails: receptionDetails || null,
-      });
-      await db
-        .insert(settings)
-        .values({
-          key: `${RECEPTION_KEY_PREFIX}${payment.id}`,
-          value: receptionValue,
-        })
-        .onConflictDoUpdate({
-          target: settings.key,
-          set: {
-            value: receptionValue,
-          },
-        });
+    if (receptionPlatform) {
+      await appendReceptionMethod(
+        payment.id,
+        receptionPlatform,
+        receptionDetails || {}
+      );
     }
 
     // Notify all admins
