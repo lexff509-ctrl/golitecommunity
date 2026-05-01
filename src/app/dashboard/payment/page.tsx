@@ -12,9 +12,11 @@ import {
   EXCHANGE_RATE,
   BINANCE_INFO,
   MONCASH_INFO,
+  NATCASH_INFO,
   MERU_INFO,
   CAM_TRANSFER_INFO,
   DEFAULT_TRC20_WALLET,
+  USDT_WALLETS,
 } from "@/lib/constants";
 
 type FormData = {
@@ -499,6 +501,25 @@ export default function NewPaymentPage() {
                     </p>
                   </div>
                 )}
+                {form.method === "NatCash" && (
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between p-2 bg-white rounded-lg">
+                      <span className="text-slate-500">Nom :</span>
+                      <span className="font-mono font-bold text-slate-900">
+                        {NATCASH_INFO.name || "À configurer"}
+                      </span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-white rounded-lg">
+                      <span className="text-slate-500">Numéro :</span>
+                      <span className="font-mono font-bold text-slate-900">
+                        {NATCASH_INFO.phone || "À configurer"}
+                      </span>
+                    </div>
+                    <p className="text-amber-600 text-xs font-medium">
+                      ⚠️ Envoyez exactement le montant indiqué. Conservez la preuve de transaction.
+                    </p>
+                  </div>
+                )}
                 {form.method === "Meru" && (
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between p-2 bg-white rounded-lg">
@@ -555,8 +576,27 @@ export default function NewPaymentPage() {
                 )}
                 {form.method === "Crypto" && (
                   <div className="text-sm text-slate-600 space-y-1">
-                    <p>• Réseau requis : TRC-20 (TRON)</p>
-                    <p>• Wallet: {pubConfig?.config?.wallet_trc20 || DEFAULT_TRC20_WALLET}</p>
+                    <p>• Réseau requis: choisissez le bon réseau</p>
+                    <div className="space-y-2">
+                      <div className="p-2 bg-white rounded-lg border border-slate-200">
+                        <p className="text-xs text-slate-500">USDT TRC20</p>
+                        <p className="font-mono font-bold text-slate-900 break-all">
+                          {pubConfig?.config?.wallet_trc20 || USDT_WALLETS.TRC20 || DEFAULT_TRC20_WALLET}
+                        </p>
+                      </div>
+                      <div className="p-2 bg-white rounded-lg border border-slate-200">
+                        <p className="text-xs text-slate-500">USDT ERC20</p>
+                        <p className="font-mono font-bold text-slate-900 break-all">
+                          {USDT_WALLETS.ERC20}
+                        </p>
+                      </div>
+                      <div className="p-2 bg-white rounded-lg border border-slate-200">
+                        <p className="text-xs text-slate-500">USDT BEP20</p>
+                        <p className="font-mono font-bold text-slate-900 break-all">
+                          {USDT_WALLETS.BEP20}
+                        </p>
+                      </div>
+                    </div>
                     <p className="text-amber-600 font-medium">
                       ⚠️ Assurez-vous d&apos;envoyer via le bon réseau
                     </p>

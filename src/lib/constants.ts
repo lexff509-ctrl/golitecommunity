@@ -29,6 +29,12 @@ export const MONCASH_INFO = {
   phone: "+50931959375",
 };
 
+export const NATCASH_INFO = {
+  // TODO: configure when NatCash becomes available
+  name: "",
+  phone: "",
+};
+
 export const MERU_INFO = {
   tag: "$golitecommunity",
   phone: "+50946074865",
@@ -42,6 +48,12 @@ export const CAM_TRANSFER_INFO = {
 };
 
 export const DEFAULT_TRC20_WALLET = "TPYgjvcLB5Jps5zEmMPgRK8xHXip5iVuyJ";
+
+export const USDT_WALLETS = {
+  BEP20: "0xd255fe93d2b70b0934faca0e4268156f85cf2997",
+  TRC20: DEFAULT_TRC20_WALLET,
+  ERC20: "0xd255fe93d2b70b0934faca0e4268156f85cf2997",
+} as const;
 
 export const STATUS_MAP: Record<
   string,
